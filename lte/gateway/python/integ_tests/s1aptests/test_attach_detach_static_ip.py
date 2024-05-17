@@ -26,7 +26,7 @@ class TestAttachDetachStaticIP(unittest.TestCase):
     def tearDown(self):
         self._s1ap_wrapper.cleanup()
 
-    def test_attach_detach_static_ip1(self):
+    def test_attach_detach_static_ip(self):
         """ Basic attach/detach test with a single UE """
         num_ues = 3
         detach_type = [
@@ -56,9 +56,9 @@ class TestAttachDetachStaticIP(unittest.TestCase):
             addr = attach.esmInfo.pAddr.addrInfo
             ue_ipv4 = ipaddress.ip_address(bytes(addr[:4]))
             if i < (num_ues - 1):
-                self.assertEqual(ue_ipv4, ipaddress.IPv4Address(ue_ips[i]))
+                assert ue_ipv4 == ipaddress.IPv4Address(ue_ips[i])
             else:
-                self.assertIn(ue_ipv4, ipaddress.ip_network("192.168.128.0/24"))
+                assert ue_ipv4 in ipaddress.ip_network("192.168.128.0/24")
 
             # Wait on EMM Information from MME
             self._s1ap_wrapper._s1_util.receive_emm_info()

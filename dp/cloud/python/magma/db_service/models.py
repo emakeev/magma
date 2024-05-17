@@ -21,7 +21,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    Text,
 )
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.declarative import declarative_base
@@ -61,12 +60,8 @@ class DBRequest(Base):
     """
     __tablename__ = "requests"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    type_id = Column(
-        Integer, ForeignKey(
-            "request_types.id", ondelete="CASCADE",
-        ),
-    )
-    cbsd_id = Column(Integer, ForeignKey("cbsds.id", ondelete="CASCADE"))
+    type_id = Column(Integer, ForeignKey("request_types.id", ondelete="CASCADE"))
+    cbsd_id = Column(Integer, ForeignKey("cbsds.id", ondelete="CASCADE"), index=True)
     created_date = Column(
         DateTime(timezone=True),
         nullable=False, server_default=now(),
@@ -85,9 +80,8 @@ class DBRequest(Base):
         Return string representation of DB object
         """
         class_name = self.__class__.__name__
-        type_name = self.type.name
         return f"<{class_name}(id='{self.id}', " \
-            f"type='{type_name}', " \
+            f"type_id='{self.type_id}', " \
             f"cbsd_id='{self.cbsd_id}' " \
             f"created_date='{self.created_date}' " \
             f"updated_date='{self.updated_date}' " \
@@ -102,10 +96,7 @@ class DBGrantState(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
 
-    grants = relationship(
-        "DBGrant", back_populates="state", cascade="all, delete",
-        passive_deletes=True,
-    )
+    grants = relationship("DBGrant", back_populates="state")
 
     def __repr__(self):
         """
@@ -127,7 +118,7 @@ class DBGrant(Base):
             "grant_states.id", ondelete="CASCADE",
         ), nullable=False,
     )
-    cbsd_id = Column(Integer, ForeignKey("cbsds.id", ondelete="CASCADE"))
+    cbsd_id = Column(Integer, ForeignKey("cbsds.id", ondelete="CASCADE"), index=True)
     grant_id = Column(String, nullable=False)
     grant_expire_time = Column(DateTime(timezone=True))
     transmit_expire_time = Column(DateTime(timezone=True))
@@ -146,14 +137,8 @@ class DBGrant(Base):
         server_default=now(), onupdate=now(),
     )
 
-    state = relationship(
-        "DBGrantState", back_populates="grants", cascade="all, delete",
-        passive_deletes=True,
-    )
-    cbsd = relationship(
-        "DBCbsd", back_populates="grants", cascade="all, delete",
-        passive_deletes=True,
-    )
+    state = relationship("DBGrantState", back_populates="grants")
+    cbsd = relationship("DBCbsd", back_populates="grants")
 
     def __repr__(self):
         """
@@ -229,16 +214,10 @@ class DBCbsd(Base):
     longitude_deg = Column(Float)
     height_m = Column(Float)
     height_type = Column(String)
-    horizontal_accuracy_m = Column(Float)
-    antenna_azimuth_deg = Column(Integer)
-    antenna_downtilt_deg = Column(Integer)
-    antenna_beamwidth_deg = Column(Integer)
-    antenna_model = Column(String)
-    eirp_capability_dbm_mhz = Column(Integer)
-    cpi_digital_signature = Column(Text)
     indoor_deployment = Column(Boolean, nullable=False, server_default='false')
     is_deleted = Column(Boolean, nullable=False, server_default='false')
     should_deregister = Column(Boolean, nullable=False, server_default='false')
+    should_relinquish = Column(Boolean, nullable=False, server_default='false')
     carrier_aggregation_enabled = Column(Boolean, nullable=False, server_default='false')
     max_ibw_mhz = Column(Integer, nullable=False, server_default='150')
     grant_redundancy = Column(Boolean, nullable=False, server_default='true')
@@ -252,72 +231,22 @@ class DBCbsd(Base):
         server_default=now(), onupdate=now(),
     )
 
-    state = relationship(
-        "DBCbsdState", cascade="all, delete",
-        foreign_keys=[state_id], passive_deletes=True,
-    )
-    desired_state = relationship(
-        "DBCbsdState", cascade="all, delete",
-        foreign_keys=[desired_state_id], passive_deletes=True,
-    )
-    requests = relationship(
-        "DBRequest", back_populates="cbsd", cascade="all, delete",
-        passive_deletes=True,
-    )
-    grants = relationship(
-        "DBGrant", back_populates="cbsd", cascade="all, delete",
-        passive_deletes=True,
-    )
-    channels = relationship(
-        "DBChannel", back_populates="cbsd", cascade="all, delete",
-        passive_deletes=True,
-    )
+    state = relationship("DBCbsdState", foreign_keys=[state_id])
+    desired_state = relationship("DBCbsdState", foreign_keys=[desired_state_id])
+    requests = relationship("DBRequest", back_populates="cbsd")
+    grants = relationship("DBGrant", back_populates="cbsd")
+    channels = Column(JSON, nullable=False, server_default=sa_text("'[]'::json"))
 
     def __repr__(self):
         """
         Return string representation of DB object
         """
         class_name = self.__class__.__name__
-        state_name = self.state.name
         return f"<{class_name}(id='{self.id}', " \
-               f"state='{state_name}', " \
+               f"state_id='{self.state_id}', " \
                f"cbsd_id='{self.cbsd_id}', " \
                f"user_id='{self.user_id}', " \
                f"fcc_id='{self.fcc_id}', " \
                f"cbsd_serial_number='{self.cbsd_serial_number}', " \
                f"created_date='{self.created_date}' " \
                f"updated_date='{self.updated_date}')>"
-
-
-class DBChannel(Base):
-    """
-    SAS DB Channel class
-    """
-    __tablename__ = "channels"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    cbsd_id = Column(Integer, ForeignKey("cbsds.id", ondelete="CASCADE"))
-    low_frequency = Column(BigInteger, nullable=False)
-    high_frequency = Column(BigInteger, nullable=False)
-    channel_type = Column(String, nullable=False)
-    rule_applied = Column(String, nullable=False)
-    max_eirp = Column(Float)
-    created_date = Column(
-        DateTime(timezone=True),
-        nullable=False, server_default=now(),
-    )
-    updated_date = Column(
-        DateTime(timezone=True),
-        server_default=now(), onupdate=now(),
-    )
-
-    cbsd = relationship(
-        "DBCbsd", back_populates="channels", cascade="all, delete",
-        passive_deletes=True,
-    )
-
-    def __repr__(self):
-        """
-        Return string representation of DB object
-        """
-        class_name = self.__class__.__name__
-        return f"<{class_name}(id='{self.id}', cbsd_id='{self.cbsd_id}')>"

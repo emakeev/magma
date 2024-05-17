@@ -252,6 +252,7 @@ pytest_test(
         "//lte/gateway/python/magma/pipelined:bridge_util",
         "//lte/gateway/python/magma/pipelined/ebpf:ebpf_manager",
         "//lte/protos:mobilityd_python_proto",
+        requirement("scapy"),
     ],
 )
 
@@ -268,6 +269,7 @@ pytest_test(
         "//lte/gateway/python/magma/pipelined:bridge_util",
         "//lte/gateway/python/magma/pipelined/ebpf:ebpf_manager",
         "//lte/protos:mobilityd_python_proto",
+        requirement("scapy"),
     ],
 )
 
@@ -721,6 +723,14 @@ pytest_test(
 )
 
 pytest_test(
+    name = "test_ifaces",
+    size = "small",
+    srcs = ["test_ifaces.py"],
+    imports = [LTE_ROOT],
+    deps = ["//lte/gateway/python/magma/pipelined:ifaces"],
+)
+
+pytest_test(
     name = "test_tunnel_id_mapper",
     size = "small",
     srcs = ["test_tunnel_id_mapper.py"],
@@ -874,5 +884,44 @@ pytest_test(
         "//lte/gateway/python/magma/pipelined/tests/app:start_pipelined",
         "//lte/protos:mobilityd_python_proto",
         "//lte/protos:pipelined_python_proto",
+    ],
+)
+
+pytest_test(
+    name = "test_qfi_gtp",
+    size = "small",
+    srcs = ["test_qfi_gtp.py"],
+    imports = [
+        LTE_ROOT,
+        ORC8R_ROOT,
+    ],
+    tags = TAG_SUDO_TEST,
+    deps = [
+        ":pipelined_test_util",
+        "//lte/gateway/python/magma/pipelined:bridge_util",
+        "//lte/gateway/python/magma/pipelined/app:testing",
+        "//lte/gateway/python/magma/pipelined/tests/app:start_pipelined",
+        "//lte/protos:mobilityd_python_proto",
+        "//lte/protos:pipelined_python_proto",
+    ],
+)
+
+pytest_test(
+    name = "test_ipv6_solicitation_5g",
+    size = "small",
+    srcs = ["test_ipv6_solicitation_5g.py"],
+    imports = [
+        LTE_ROOT,
+        ORC8R_ROOT,
+    ],
+    tags = TAG_SUDO_TEST,
+    deps = [
+        ":pipelined_test_util",
+        "//lte/gateway/python/magma/pipelined/app:ipv6_solicitation",
+        "//lte/gateway/python/magma/pipelined/app:testing",
+        "//lte/gateway/python/magma/pipelined/tests/app:packet_injector",
+        "//lte/gateway/python/magma/pipelined/tests/app:start_pipelined",
+        "//lte/gateway/python/magma/pipelined/tests/app:table_isolation",
+        "//lte/protos:mconfigs_python_proto",
     ],
 )

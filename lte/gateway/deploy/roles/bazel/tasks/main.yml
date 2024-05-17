@@ -16,6 +16,8 @@
     path: '/etc/bazelrc'
     state: link
     force: yes
+    follow: false
+  when: full_provision
 
 - name: Symlink bazel disk cache configuration into the VM
   file:
@@ -23,6 +25,8 @@
     path: '/var/cache/bazel-cache'
     state: link
     force: yes
+    follow: false
+  when: full_provision
 
 - name: Symlink bazel disk repository cache configuration into the VM
   file:
@@ -30,3 +34,4 @@
     path: '/var/cache/bazel-cache-repo'
     state: link
     force: yes
+  when: full_provision

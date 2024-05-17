@@ -12,18 +12,19 @@
  */
 
 import AsyncMetric from './insights/AsyncMetric';
-import Card from '@material-ui/core/Card';
-import CardHeader from '@material-ui/core/CardHeader';
+import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
 import CardTitleRow from './layout/CardTitleRow';
-import DataUsageIcon from '@material-ui/icons/DataUsage';
-import Grid from '@material-ui/core/Grid';
+import DataUsageIcon from '@mui/icons-material/DataUsage';
+import Grid from '@mui/material/Grid';
 import React from 'react';
 import Text from '../theme/design-system/Text';
-import moment from 'moment';
 
-import {DateTimePicker} from '@material-ui/pickers';
+import TextField from '@mui/material/TextField';
+import {DateTimePicker} from '@mui/x-date-pickers/DateTimePicker';
 import {colors} from '../theme/default';
-import {makeStyles} from '@material-ui/styles';
+import {makeStyles} from '@mui/styles';
+import {subHours} from 'date-fns';
 import {useState} from 'react';
 
 export type DateTimeMetricChartProps = {
@@ -31,8 +32,8 @@ export type DateTimeMetricChartProps = {
   queries: Array<string>;
   legendLabels: Array<string>;
   unit?: string;
-  startDate?: moment.Moment;
-  endDate?: moment.Moment;
+  startDate?: Date;
+  endDate?: Date;
 };
 
 const useStyles = makeStyles({
@@ -45,8 +46,8 @@ const CHART_COLORS = [colors.secondary.dodgerBlue, colors.data.flamePea];
 
 export default function DateTimeMetricChart(props: DateTimeMetricChartProps) {
   const classes = useStyles();
-  const [startDate, setStartDate] = useState(moment().subtract(3, 'hours'));
-  const [endDate, setEndDate] = useState(moment());
+  const [startDate, setStartDate] = useState(subHours(new Date(), 3));
+  const [endDate, setEndDate] = useState(new Date());
 
   function Filter() {
     return (
@@ -58,8 +59,7 @@ export default function DateTimeMetricChart(props: DateTimeMetricChartProps) {
         </Grid>
         <Grid item>
           <DateTimePicker
-            autoOk
-            inputVariant="outlined"
+            renderInput={props => <TextField {...props} />}
             maxDate={endDate}
             disableFuture
             value={startDate}
@@ -73,8 +73,7 @@ export default function DateTimeMetricChart(props: DateTimeMetricChartProps) {
         </Grid>
         <Grid item>
           <DateTimePicker
-            autoOk
-            inputVariant="outlined"
+            renderInput={props => <TextField {...props} />}
             disableFuture
             value={endDate}
             onChange={date => setEndDate(date!)}

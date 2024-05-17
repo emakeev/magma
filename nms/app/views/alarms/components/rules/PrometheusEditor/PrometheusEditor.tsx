@@ -13,33 +13,31 @@
 
 import * as PromQL from '../../prometheus/PromQL';
 import * as React from 'react';
-import Button from '@material-ui/core/Button';
-import Divider from '@material-ui/core/Divider';
-import FormHelperText from '@material-ui/core/FormHelperText';
-import Grid from '@material-ui/core/Grid';
-import Input from '@material-ui/core/Input';
-import InputLabel from '@material-ui/core/InputLabel';
-import MenuItem from '@material-ui/core/MenuItem';
+import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import FormHelperText from '@mui/material/FormHelperText';
+import Grid from '@mui/material/Grid';
+import MenuItem from '@mui/material/MenuItem';
 import RuleEditorBase from '../RuleEditorBase';
-import TextField from '@material-ui/core/TextField';
 import ToggleableExpressionEditor, {
   AdvancedExpressionEditor,
   thresholdToPromQL,
 } from './ToggleableExpressionEditor';
 import useForm from '../../../hooks/useForm';
+import {AltFormField} from '../../../../../components/FormField';
+import {FormControl, OutlinedInput, Select} from '@mui/material';
 import {Labels} from '../../prometheus/PromQL';
 import {Parse} from '../../prometheus/PromQLParser';
 import {SEVERITY} from '../../severity/Severity';
-import {makeStyles} from '@material-ui/styles';
+import {getErrorMessage} from '../../../../../util/ErrorUtils';
+import {makeStyles} from '@mui/styles';
 import {useAlarmContext} from '../../AlarmContext';
 import {useParams} from 'react-router-dom';
 import {useSnackbars} from '../../../../../hooks/useSnackbar';
-
-import {getErrorMessage} from '../../../../../util/ErrorUtils';
 import type {AlertConfig, Labels as LabelsMap} from '../../AlarmAPIType';
 import type {GenericRule, RuleEditorProps} from '../RuleInterface';
 import type {RuleEditorBaseFields} from '../RuleEditorBase';
-import type {Theme} from '@material-ui/core/styles';
+import type {Theme} from '@mui/material/styles';
 import type {ThresholdExpression} from './ToggleableExpressionEditor';
 
 type MenuItemProps = {key: string; value: string; children: string};
@@ -49,10 +47,10 @@ type TimeUnit = {value: string; label: string};
 const useStyles = makeStyles<Theme>(theme => ({
   button: {
     marginLeft: -theme.spacing(0.5),
-    margin: theme.spacing(1.5),
+    marginRight: theme.spacing(1.5),
   },
   divider: {
-    margin: `${theme.spacing(2)}px 0`,
+    margin: `${theme.spacing(2)} 0`,
   },
 }));
 
@@ -207,6 +205,7 @@ export default function PrometheusEditor(props: PrometheusEditorProps) {
           />
           <Button
             className={classes.button}
+            variant="outlined"
             color="primary"
             size="small"
             target="_blank"
@@ -215,6 +214,7 @@ export default function PrometheusEditor(props: PrometheusEditorProps) {
           </Button>
           <Button
             className={classes.button}
+            variant="outlined"
             color="primary"
             size="small"
             onClick={toggleMode}>
@@ -258,34 +258,33 @@ const useSeverityMenuItemStyles = makeStyles({
     textTransform: 'capitalize',
   },
 });
-const useSeveritySelectStyles = makeStyles({
-  root: {
-    textTransform: 'capitalize',
-  },
-});
+
 function SeverityEditor(props: {
   onChange: InputChangeFunc;
   severity: string;
   options: Array<MenuItemProps>;
 }) {
-  const severitySelectClasses = useSeveritySelectStyles();
   const severityMenuItemClasses = useSeverityMenuItemStyles();
   return (
     <Grid item xs={3}>
-      <InputLabel htmlFor="severity-input">Severity</InputLabel>
-      <TextField
-        id="severity-input"
-        fullWidth
-        required
-        select
-        value={props.severity}
-        onChange={props.onChange(value => ({severity: value}))}
-        classes={severitySelectClasses}>
-        {props.options.map(opt => (
-          // @ts-ignore somehow TypeScript does understand that ListItemClasses is a valid prop
-          <MenuItem {...opt} ListItemClasses={severityMenuItemClasses} />
-        ))}
-      </TextField>
+      <AltFormField disableGutters label="Severity">
+        <FormControl fullWidth>
+          <Select
+            id="severity-input"
+            fullWidth
+            variant="standard"
+            required
+            value={props.severity}
+            // @ts-ignore Somehow the whole types are messed up here, as select elements have different types than other elements.
+            onChange={props.onChange(value => ({severity: value}))}
+            input={<OutlinedInput />}>
+            {props.options.map(opt => (
+              // @ts-ignore somehow TypeScript does understand that ListItemClasses is a valid prop
+              <MenuItem {...opt} ListItemClasses={severityMenuItemClasses} />
+            ))}
+          </Select>
+        </FormControl>
+      </AltFormField>
     </Grid>
   );
 }
@@ -316,14 +315,15 @@ function TimeNumberEditor(props: {
 }) {
   return (
     <Grid item xs={6}>
-      <InputLabel htmlFor="duration-input">Duration</InputLabel>
-      <Input
-        id="duration-input"
-        fullWidth
-        type="number"
-        value={isNaN(props.timeNumber) ? '' : props.timeNumber}
-        onChange={props.onChange(val => ({timeNumber: parseInt(val, 10)}))}
-      />
+      <AltFormField disableGutters label="Duration">
+        <OutlinedInput
+          id="duration-input"
+          fullWidth
+          type="number"
+          value={isNaN(props.timeNumber) ? '' : props.timeNumber}
+          onChange={props.onChange(val => ({timeNumber: parseInt(val, 10)}))}
+        />
+      </AltFormField>
       <FormHelperText>
         Amount of time that conditions are true before an alert is triggered
       </FormHelperText>
@@ -336,27 +336,30 @@ function TimeUnitEditor(props: {
   timeUnit: string;
   timeUnits: Array<TimeUnit>;
 }) {
-  const severitySelectClasses = useSeveritySelectStyles();
   const severityMenuItemClasses = useSeverityMenuItemStyles();
   return (
     <Grid item xs={3}>
-      <InputLabel htmlFor="unit-input">Unit</InputLabel>
-      <TextField
-        id="unit-input"
-        fullWidth
-        select
-        value={props.timeUnit}
-        onChange={props.onChange(val => ({timeUnit: val}))}
-        classes={severitySelectClasses}>
-        {props.timeUnits.map(option => (
-          <MenuItem
-            key={option.value}
-            value={option.value}
-            classes={severityMenuItemClasses}>
-            {option.label}
-          </MenuItem>
-        ))}
-      </TextField>
+      <AltFormField disableGutters label="Unit">
+        <FormControl fullWidth>
+          <Select
+            id="unit-input"
+            variant="standard"
+            fullWidth
+            value={props.timeUnit}
+            // @ts-ignore Somehow the whole types are messed up here, as select elements have different types than other elements.
+            onChange={props.onChange(val => ({timeUnit: val}))}
+            input={<OutlinedInput />}>
+            {props.timeUnits.map(option => (
+              <MenuItem
+                key={option.value}
+                value={option.value}
+                classes={severityMenuItemClasses}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </AltFormField>
     </Grid>
   );
 }

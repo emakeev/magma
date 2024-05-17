@@ -8,6 +8,7 @@ secret:
     orc8r: orc8r-secrets-configs-orc8r
   envdir: orc8r-secrets-envdir
 
+
 controller:
   tolerations: []
   affinity: {}
@@ -157,11 +158,17 @@ nms:
           targetPort: 9443
 dp:
   enabled: true
-  cbsd_inactivity_interval_sec: 3
-  log_consumer_url: "http://domain-proxy-fluentd:9888/dp"
   service:
     labels:
       orc8r.io/obsidian_handlers: "true"
       orc8r.io/swagger_spec: "true"
     annotations:
       orc8r.io/obsidian_handlers_path_prefixes: /magma/v1/dp
+
+secrets:
+  configs:
+    enabled: true
+    orc8r:
+      elastic.yml: |-
+        elasticHost: "elasticsearch"
+        elasticPort: 9200

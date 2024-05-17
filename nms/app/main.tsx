@@ -12,24 +12,25 @@
  */
 
 import './util/axiosConfig';
+import './util/chartjsSetup';
 import './util/polyfill';
 
 import ApplicationMain from './components/ApplicationMain';
 import Main from './components/Main';
-import MomentUtils from '@date-io/moment';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import nullthrows from '../shared/util/nullthrows';
+import {AdapterDateFns} from '@mui/x-date-pickers/AdapterDateFns';
 import {BrowserRouter} from 'react-router-dom';
-import {MuiPickersUtilsProvider} from '@material-ui/pickers';
+import {LocalizationProvider} from '@mui/x-date-pickers';
 
 ReactDOM.render(
   <BrowserRouter>
-    <MuiPickersUtilsProvider utils={MomentUtils}>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
       <ApplicationMain>
         <Main />
       </ApplicationMain>
-    </MuiPickersUtilsProvider>
+    </LocalizationProvider>
   </BrowserRouter>,
   nullthrows(document.getElementById('root')),
 );

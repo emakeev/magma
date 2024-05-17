@@ -13,23 +13,23 @@
 import type {DataRows} from '../../components/DataGrid';
 import type {NetworkEpcConfigs} from '../../../generated';
 
-import Button from '@material-ui/core/Button';
+import Button from '@mui/material/Button';
 import DataGrid from '../../components/DataGrid';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import FormLabel from '@material-ui/core/FormLabel';
-import IconButton from '@material-ui/core/IconButton';
-import InputAdornment from '@material-ui/core/InputAdornment';
-import List from '@material-ui/core/List';
-import ListItemText from '@material-ui/core/ListItemText';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import FormLabel from '@mui/material/FormLabel';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import List from '@mui/material/List';
+import ListItemText from '@mui/material/ListItemText';
 import LteNetworkContext from '../../context/LteNetworkContext';
-import MenuItem from '@material-ui/core/MenuItem';
-import OutlinedInput from '@material-ui/core/OutlinedInput';
+import MenuItem from '@mui/material/MenuItem';
+import OutlinedInput from '@mui/material/OutlinedInput';
 import React from 'react';
-import Select from '@material-ui/core/Select';
-import Switch from '@material-ui/core/Switch';
-import Visibility from '@material-ui/icons/Visibility';
-import VisibilityOff from '@material-ui/icons/VisibilityOff';
+import Select from '@mui/material/Select';
+import Switch from '@mui/material/Switch';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 import {AltFormField} from '../../components/FormField';
 import {
@@ -46,6 +46,12 @@ type Props = {
 
 export default function NetworkEpc(props: Props) {
   const kpiData: Array<DataRows> = [
+    [
+      {
+        category: '5G Features',
+        value: props.epcConfigs?.enable5g_features ? 'Enabled' : 'Disabled',
+      },
+    ],
     [
       {
         category: 'Policy Enforcement Enabled',
@@ -101,6 +107,7 @@ export function NetworkEpcEdit(props: EditProps) {
       ? {
           cloud_subscriberdb_enabled: false,
           default_rule_id: 'default_rule_1',
+          enable5g_features: false,
           lte_auth_amf: 'gAA=',
           lte_auth_op: 'EREREREREREREREREREREQ==',
           mcc: '001',
@@ -120,10 +127,15 @@ export function NetworkEpcEdit(props: EditProps) {
       enable_multi_apn_ip_allocation: false,
     },
   );
+
   const handleMobilityChange = <K extends keyof NetworkEpcConfigsMobility>(
     key: K,
     val: NetworkEpcConfigsMobility[K],
   ) => setEpcMobility({...epcMobility, [key]: val});
+  const handleEpcConfigChange = <K extends keyof NetworkEpcConfigs>(
+    key: K,
+    val: NetworkEpcConfigs[K],
+  ) => setEpcConfigs({...epcConfigs, [key]: val});
   const onSave = async () => {
     try {
       await ctx.updateNetworks({
@@ -146,6 +158,17 @@ export function NetworkEpcEdit(props: EditProps) {
           </AltFormField>
         )}
         <List>
+          <AltFormField label={'Enable 5G Features'}>
+            <Switch
+              onChange={() => {
+                handleEpcConfigChange(
+                  'enable5g_features',
+                  !epcConfigs.enable5g_features,
+                );
+              }}
+              checked={epcConfigs.enable5g_features}
+            />
+          </AltFormField>
           <AltFormField label={'IP Allocation Mode'}>
             <Select
               variant={'outlined'}
@@ -223,7 +246,8 @@ export function NetworkEpcEdit(props: EditProps) {
                   <IconButton
                     aria-label="toggle password visibility"
                     onClick={() => setShowPassword(!showPassword)}
-                    onMouseDown={event => event.preventDefault()}>
+                    onMouseDown={event => event.preventDefault()}
+                    size="large">
                     {showPassword ? <Visibility /> : <VisibilityOff />}
                   </IconButton>
                 </InputAdornment>

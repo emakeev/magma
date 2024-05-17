@@ -768,30 +768,7 @@ func TestListSubscriberStates(t *testing.T) {
 	clock.SetAndFreezeClock(t, time.Unix(frozenClock, 0))
 	defer clock.UnfreezeClock(t)
 
-	icmpStatus := &subscriberModels.IcmpStatus{LatencyMs: f32Ptr(12.34)}
 	ctx := test_utils.GetContextWithCertificate(t, "hw0")
-	test_utils.ReportState(t, ctx, lte.ICMPStateType, "IMSI1234567890", icmpStatus, serdes.State)
-	mmeState := state.ArbitraryJSON{"mme": "foo"}
-	test_utils.ReportState(t, ctx, lte.MMEStateType, "IMSI1234567890", &mmeState, serdes.State)
-	spgwState := state.ArbitraryJSON{"spgw": "foo"}
-	test_utils.ReportState(t, ctx, lte.SPGWStateType, "IMSI1234567890", &spgwState, serdes.State)
-	s1apState := state.ArbitraryJSON{"s1ap": "foo"}
-	test_utils.ReportState(t, ctx, lte.S1APStateType, "IMSI1234567890", &s1apState, serdes.State)
-	// Report 2 allocated IP addresses for the subscriber
-	mobilitydState1 := state.ArbitraryJSON{
-		"ip": map[string]interface{}{
-			"address": "wKiArg==",
-		},
-	}
-	mobilitydState2 := state.ArbitraryJSON{
-		"ip": map[string]interface{}{
-			"address": "wKiAhg==",
-		},
-	}
-	test_utils.ReportState(t, ctx, lte.MobilitydStateType, "IMSI1234567890.oai.ipv4", &mobilitydState1, serdes.State)
-	test_utils.ReportState(t, ctx, lte.MobilitydStateType, "IMSI1234567890.magma.apn", &mobilitydState2, serdes.State)
-	directoryState := directorydTypes.DirectoryRecord{LocationHistory: []string{"foo", "bar"}}
-	test_utils.ReportState(t, ctx, orc8r.DirectoryRecordType, "IMSI1234567890", &directoryState, serdes.State)
 
 	subState0 := state.ArbitraryJSON{
 		"subscriber_state": state.ArbitraryJSON{
@@ -820,6 +797,30 @@ func TestListSubscriberStates(t *testing.T) {
 	}
 	test_utils.ReportState(t, ctx, lte.GatewaySubscriberStateType, "hw0", &gwSubState, serdes.State)
 	assert.NoError(t, err)
+
+	icmpStatus := &subscriberModels.IcmpStatus{LatencyMs: f32Ptr(12.34)}
+	test_utils.ReportState(t, ctx, lte.ICMPStateType, "IMSI1234567890", icmpStatus, serdes.State)
+	mmeState := state.ArbitraryJSON{"mme": "foo"}
+	test_utils.ReportState(t, ctx, lte.MMEStateType, "IMSI1234567890", &mmeState, serdes.State)
+	spgwState := state.ArbitraryJSON{"spgw": "foo"}
+	test_utils.ReportState(t, ctx, lte.SPGWStateType, "IMSI1234567890", &spgwState, serdes.State)
+	s1apState := state.ArbitraryJSON{"s1ap": "foo"}
+	test_utils.ReportState(t, ctx, lte.S1APStateType, "IMSI1234567890", &s1apState, serdes.State)
+	// Report 2 allocated IP addresses for the subscriber
+	mobilitydState1 := state.ArbitraryJSON{
+		"ip": map[string]interface{}{
+			"address": "wKiArg==",
+		},
+	}
+	mobilitydState2 := state.ArbitraryJSON{
+		"ip": map[string]interface{}{
+			"address": "wKiAhg==",
+		},
+	}
+	test_utils.ReportState(t, ctx, lte.MobilitydStateType, "IMSI1234567890.oai.ipv4", &mobilitydState1, serdes.State)
+	test_utils.ReportState(t, ctx, lte.MobilitydStateType, "IMSI1234567890.magma.apn", &mobilitydState2, serdes.State)
+	directoryState := directorydTypes.DirectoryRecord{LocationHistory: []string{"foo", "bar"}}
+	test_utils.ReportState(t, ctx, orc8r.DirectoryRecordType, "IMSI1234567890", &directoryState, serdes.State)
 
 	tc = tests.Test{
 		Method:         "GET",
@@ -1362,6 +1363,25 @@ func TestUpdateSubscriber(t *testing.T) {
 		Version:      1,
 		Associations: storage.TKs{{Type: lte.APNEntityType, Key: apn2}, {Type: lte.APNEntityType, Key: apn1}},
 	}
+	assert.Equal(t, expected, actual)
+
+	// Test deleting all active APNs
+	payload.ActiveApns = subscriberModels.ApnList{}
+	payload.StaticIps = subscriberModels.SubscriberStaticIps{}
+	tests.RunUnitTest(t, e, tc)
+	expected = configurator.NetworkEntity{
+		NetworkID:    "n1",
+		Type:         lte.SubscriberEntityType,
+		Key:          "IMSI1234567890",
+		Name:         "Jane Doe",
+		Config:       &subscriberModels.SubscriberConfig{Lte: payload.Lte, StaticIps: nil},
+		GraphID:      "2",
+		Version:      2,
+		Associations: nil,
+	}
+	expected.Config = &subscriberModels.SubscriberConfig{Lte: payload.Lte, StaticIps: nil}
+	actual, err = configurator.LoadEntity(context.Background(), "n1", lte.SubscriberEntityType, "IMSI1234567890", configurator.FullEntityLoadCriteria(), serdes.Entity)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 
 	// No profile matching

@@ -13,7 +13,7 @@
 
 import {isEqual, sortBy} from 'lodash';
 
-import OrchestartorAPI from '../api/OrchestratorAPI';
+import OrchestratorAPI from '../api/OrchestratorAPI';
 import Sequelize from 'sequelize';
 import logging from '../../shared/logging';
 import {AnalyticsDBData} from './dashboards/AnalyticsDashboards';
@@ -34,7 +34,6 @@ import {
 } from './dashboards/Dashboards';
 import {Organization} from '../../shared/sequelize_models';
 import {Request} from 'express';
-import {XWFMDBData} from './dashboards/XWFMDashboards';
 import {apiCredentials} from '../../config/config';
 import type {
   CreateDashboardResponse,
@@ -393,7 +392,7 @@ export async function syncTenants(): Promise<{
   const completedTasks: Array<Task> = [];
   const tenantMap: Record<string, Tenant> = {};
   try {
-    const orc8rTenants = (await OrchestartorAPI.tenants.tenantsGet()).data;
+    const orc8rTenants = (await OrchestratorAPI.tenants.tenantsGet()).data;
     orc8rTenants.forEach(tenant => {
       tenantMap[tenant.id] = tenant;
     });
@@ -419,7 +418,7 @@ export async function syncTenants(): Promise<{
     try {
       // Update if tenant exists but is not equal to NMS Org
       if (orc8rTenant && !organizationsEqual(org, orc8rTenant)) {
-        await OrchestartorAPI.tenants.tenantsTenantIdPut({
+        await OrchestratorAPI.tenants.tenantsTenantIdPut({
           tenant: {id: org.id, name: org.name, networks: org.networkIDs},
           tenantId: org.id,
         });
@@ -430,7 +429,7 @@ export async function syncTenants(): Promise<{
         });
       } else if (!orc8rTenant) {
         // Create new orc8r tenant if it didn't exist before
-        await OrchestartorAPI.tenants.tenantsPost({
+        await OrchestratorAPI.tenants.tenantsPost({
           tenant: {id: org.id, name: org.name, networks: org.networkIDs},
         });
         completedTasks.push({
@@ -496,28 +495,22 @@ export async function syncDashboards(
     dashboardData(createDashboard(GatewayDBData(networks)).generate()),
     dashboardData(createDashboard(InternalDBData(networks)).generate()),
   ];
-  if (await hasNetworkOfXWFMType(networks)) {
-    posts.push(dashboardData(createDashboard(XWFMDBData(networks)).generate()));
-  } else {
-    posts.push(
-      dashboardData(createDashboard(SubscriberDBData(networks)).generate()),
-    );
+  posts.push(
+    dashboardData(createDashboard(SubscriberDBData(networks)).generate()),
+  );
 
-    // If an org contains CWF networks, add the CWF-specific dashboards
-    if (await hasNetworkOfType(CWF, networks)) {
-      posts.push(
-        dashboardData(createDashboard(CWFNetworkDBData(networks)).generate()),
-        dashboardData(
-          createDashboard(CWFAccessPointDBData(networks)).generate(),
-        ),
-        dashboardData(createDashboard(CWFSubscriberDBData).generate()),
-        dashboardData(createDashboard(CWFGatewayDBData(networks)).generate()),
-      );
-      // Analytics Dashboard
-      posts.push(
-        dashboardData(createDashboard(AnalyticsDBData(networks)).generate()),
-      );
-    }
+  // If an org contains CWF networks, add the CWF-specific dashboards
+  if (await hasNetworkOfType(CWF, networks)) {
+    posts.push(
+      dashboardData(createDashboard(CWFNetworkDBData(networks)).generate()),
+      dashboardData(createDashboard(CWFAccessPointDBData(networks)).generate()),
+      dashboardData(createDashboard(CWFSubscriberDBData).generate()),
+      dashboardData(createDashboard(CWFGatewayDBData(networks)).generate()),
+    );
+    // Analytics Dashboard
+    posts.push(
+      dashboardData(createDashboard(AnalyticsDBData(networks)).generate()),
+    );
   }
 
   for (const post of posts) {
@@ -634,7 +627,7 @@ async function hasNetworkOfType(
   for (const networkId of networks) {
     try {
       const networkInfo = (
-        await OrchestartorAPI.networks.networksNetworkIdGet({
+        await OrchestratorAPI.networks.networksNetworkIdGet({
           networkId,
         })
       ).data;
@@ -644,24 +637,6 @@ async function hasNetworkOfType(
     } catch (error) {
       logger.error(
         `Error retrieving network info for network while building dashboards: ${networkId}. Error: ${(error as Error).toString()}`,
-      );
-    }
-  }
-  return false;
-}
-
-async function hasNetworkOfXWFMType(networks: Array<string>): Promise<boolean> {
-  for (const networkId of networks) {
-    try {
-      const cwfNetwork = (
-        await OrchestartorAPI.carrierWifiNetworks.cwfNetworkIdGet({networkId})
-      ).data;
-      return cwfNetwork.carrier_wifi?.is_xwfm_variant ?? false;
-    } catch (error) {
-      // not a real error, we are attempting to get all networks as cwf networks
-      // few of them can result in errors. These can be ignored
-      logger.error(
-        `Error attempting to retrieve ${networkId} as CWF network. Error: ${(error as Error).toString()}`,
       );
     }
   }

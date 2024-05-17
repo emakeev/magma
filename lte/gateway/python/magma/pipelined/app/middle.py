@@ -16,11 +16,11 @@ from collections import namedtuple
 from magma.pipelined.app.base import MagmaController
 from magma.pipelined.app.egress import EGRESS
 from magma.pipelined.app.restart_mixin import DefaultMsgsMap, RestartMixin
+from magma.pipelined.ifaces import get_mac_address_from_iface
 from magma.pipelined.openflow import flows
 from magma.pipelined.openflow.magma_match import MagmaMatch
 from magma.pipelined.openflow.messages import MessageHub, MsgChannel
 from magma.pipelined.openflow.registers import PASSTHROUGH_REG_VAL, Direction
-from magma.pipelined.utils import get_virtual_iface_mac
 from magma.pipelined.vlan_utils import get_vlan_egress_flow_msgs
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER, set_ev_cls
@@ -67,7 +67,7 @@ class MiddleController(RestartMixin, MagmaController):
             self._mtr_service_enabled = True
             mtr_ip = config_dict['mtr_ip']
             mtr_port = config_dict['ovs_mtr_port_number']
-            mtr_mac = get_virtual_iface_mac(config_dict['mtr_interface'])
+            mtr_mac = get_mac_address_from_iface(config_dict['mtr_interface'])
         else:
             mtr_ip = None
             mtr_mac = None
@@ -136,15 +136,6 @@ class MiddleController(RestartMixin, MagmaController):
             )
         return msgs
 
-    def _install_default_flows(self, datapath):
-        default_msg_map = self._get_default_flow_msgs(datapath)
-        default_msgs = []
-
-        for _, msgs in default_msg_map.items():
-            default_msgs.extend(msgs)
-        chan = self._msg_hub.send(default_msgs, datapath)
-        self._wait_for_responses(chan, len(default_msgs))
-
     def _wait_for_responses(self, chan, response_count):
         def fail(err):
             self.logger.error("Failed to install rule with error: %s", err)
@@ -180,10 +171,6 @@ class MiddleController(RestartMixin, MagmaController):
 
     def initialize_on_connect(self, datapath):
         self._datapath = datapath
-        # TODO possibly investigate stateless XWF(no sessiond)
-        if self.config.setup_type == 'XWF':
-            self.delete_all_flows(datapath)
-            self._install_default_flows(datapath)
 
     def delete_all_flows(self, datapath):
         flows.delete_all_flows_from_table(datapath, self.tbl_num)

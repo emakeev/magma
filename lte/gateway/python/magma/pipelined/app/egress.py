@@ -19,6 +19,7 @@ from magma.pipelined.app.base import MagmaController
 from magma.pipelined.app.restart_mixin import DefaultMsgsMap, RestartMixin
 from magma.pipelined.bridge_util import BridgeTools, DatapathLookupError
 from magma.pipelined.gw_mac_address import get_gw_mac_address
+from magma.pipelined.ifaces import get_mac_address_from_iface
 from magma.pipelined.mobilityd_client import (
     get_mobilityd_gw_info,
     set_mobilityd_gw_info,
@@ -27,7 +28,6 @@ from magma.pipelined.openflow import flows
 from magma.pipelined.openflow.magma_match import MagmaMatch
 from magma.pipelined.openflow.messages import MessageHub, MsgChannel
 from magma.pipelined.openflow.registers import PROXY_TAG_TO_PROXY, Direction
-from magma.pipelined.utils import get_virtual_iface_mac
 from magma.pipelined.vlan_utils import get_vlan_egress_flow_msgs
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER, set_ev_cls
@@ -102,7 +102,7 @@ class EgressController(RestartMixin, MagmaController):
         setup_type = config_dict.get('setup_type', None)
         if enable_nat is True or setup_type != 'LTE':
             if virtual_iface is not None:
-                virtual_mac = get_virtual_iface_mac(virtual_iface)
+                virtual_mac = get_mac_address_from_iface(virtual_iface)
             else:
                 virtual_mac = ""
         else:
@@ -140,10 +140,6 @@ class EgressController(RestartMixin, MagmaController):
     def initialize_on_connect(self, datapath):
         self._datapath = datapath
         self._setup_non_nat_monitoring()
-        # TODO possibly investigate stateless XWF(no sessiond)
-        if self.config.setup_type == 'XWF':
-            self.delete_all_flows(datapath)
-            self._install_default_flows(datapath)
 
     def _get_default_egress_flow_msgs(
         self, dp, mac_addr: str = "", vlan: str = "",
@@ -338,15 +334,6 @@ class EgressController(RestartMixin, MagmaController):
         if self._gw_mac_monitor:
             self._gw_mac_monitor_on = False
             self._gw_mac_monitor.wait()
-
-    def _install_default_flows(self, datapath):
-        default_msg_map = self._get_default_flow_msgs(datapath)
-        default_msgs = []
-
-        for _, msgs in default_msg_map.items():
-            default_msgs.extend(msgs)
-        chan = self._msg_hub.send(default_msgs, datapath)
-        self._wait_for_responses(chan, len(default_msgs))
 
     def _wait_for_responses(self, chan, response_count):
         def fail(err):

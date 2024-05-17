@@ -15,24 +15,25 @@ import ActionTable, {TableRef} from '../../components/ActionTable';
 import AutorefreshCheckbox, {
   useRefreshingDateRange,
 } from '../../components/AutorefreshCheckbox';
-import Button from '@material-ui/core/Button';
+import Button from '@mui/material/Button';
 import CardTitleRow from '../../components/layout/CardTitleRow';
-import Grid from '@material-ui/core/Grid';
-import LaunchIcon from '@material-ui/icons/Launch';
-import ListAltIcon from '@material-ui/icons/ListAlt';
+import Grid from '@mui/material/Grid';
+import LaunchIcon from '@mui/icons-material/Launch';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 import LogChart from './GatewayLogChart';
 import MagmaAPI from '../../api/MagmaAPI';
 import React, {useMemo, useRef, useState} from 'react';
 import Text from '../../theme/design-system/Text';
+import TextField from '@mui/material/TextField';
 import nullthrows from '../../../shared/util/nullthrows';
 import {CsvBuilder} from 'filefy';
-import {DateTimePicker} from '@material-ui/pickers';
+import {DateTimePicker} from '@mui/x-date-pickers/DateTimePicker';
 import {OptionsObject} from 'notistack';
-import {Theme} from '@material-ui/core/styles';
+import {Theme} from '@mui/material/styles';
 import {colors} from '../../theme/default';
 import {getErrorMessage} from '../../util/ErrorUtils';
 import {getStep} from '../../components/CustomMetrics';
-import {makeStyles} from '@material-ui/styles';
+import {makeStyles} from '@mui/styles';
 import {useEnqueueSnackbar} from '../../hooks/useSnackbar';
 import {useParams} from 'react-router-dom';
 import type {ActionQuery} from '../../components/ActionTable';
@@ -115,8 +116,8 @@ async function searchLogs(
   gatewayId: string,
   from: number,
   size: number,
-  start: moment.Moment,
-  end: moment.Moment,
+  start: Date,
+  end: Date,
   query: ActionQuery,
 ) {
   const logs = (
@@ -149,8 +150,8 @@ async function exportLogs(
   gatewayId: string,
   from: number,
   size: number,
-  start: moment.Moment,
-  end: moment.Moment,
+  start: Date,
+  end: Date,
   query: ActionQuery,
   enqueueSnackbar: (message: string, config: OptionsObject) => string | number,
 ) {
@@ -186,8 +187,8 @@ async function handleLogQuery(
   gatewayId: string,
   from: number,
   size: number,
-  start: moment.Moment,
-  end: moment.Moment,
+  start: Date,
+  end: Date,
   query: ActionQuery,
 ) {
   try {
@@ -278,14 +279,12 @@ export default function GatewayLogs() {
           </Grid>
           <Grid item>
             <DateTimePicker
-              autoOk
-              variant="inline"
-              inputVariant="outlined"
+              renderInput={props => <TextField {...props} />}
               maxDate={endDate}
               disableFuture
               value={startDate}
-              onChange={val => {
-                setStartDate(val!);
+              onChange={date => {
+                setStartDate(date as Date);
                 setIsAutoRefreshing(false);
               }}
             />
@@ -297,13 +296,11 @@ export default function GatewayLogs() {
           </Grid>
           <Grid item>
             <DateTimePicker
-              autoOk
-              variant="inline"
-              inputVariant="outlined"
+              renderInput={props => <TextField {...props} />}
               disableFuture
               value={endDate}
-              onChange={val => {
-                setEndDate(val!);
+              onChange={date => {
+                setEndDate(date as Date);
                 setIsAutoRefreshing(false);
               }}
             />

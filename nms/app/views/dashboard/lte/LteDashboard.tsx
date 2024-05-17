@@ -10,22 +10,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 import DashboardAlertTable from '../../../components/DashboardAlertTable';
 import DashboardKPIs from '../../../components/DashboardKPIs';
 import EventAlertChart from '../../../components/EventAlertChart';
 import EventsTable from '../../events/EventsTable';
-import Grid from '@material-ui/core/Grid';
+import Grid from '@mui/material/Grid';
 import React, {useState} from 'react';
 import Text from '../../../theme/design-system/Text';
+import TextField from '@mui/material/TextField';
 import TopBar from '../../../components/TopBar';
-import moment from 'moment';
-
-import {DateTimePicker} from '@material-ui/pickers';
+import {DateTimePicker} from '@mui/x-date-pickers/DateTimePicker';
 import {Navigate, Route, Routes} from 'react-router-dom';
-import {NetworkCheck} from '@material-ui/icons';
-import {Theme} from '@material-ui/core/styles';
+import {NetworkCheck} from '@mui/icons-material';
+import {Theme} from '@mui/material/styles';
 import {colors} from '../../../theme/default';
-import {makeStyles} from '@material-ui/styles';
+import {makeStyles} from '@mui/styles';
+import {subDays} from 'date-fns';
 
 const useStyles = makeStyles<Theme>(theme => ({
   dashboardRoot: {
@@ -40,8 +41,8 @@ function LteDashboard() {
   const classes = useStyles();
 
   // datetime picker
-  const [startDate, setStartDate] = useState(moment().subtract(3, 'days'));
-  const [endDate, setEndDate] = useState(moment());
+  const [startDate, setStartDate] = useState(subDays(new Date(), 3));
+  const [endDate, setEndDate] = useState(new Date());
 
   return (
     <>
@@ -64,28 +65,28 @@ function LteDashboard() {
                     Filter By Date
                   </Text>
                 </Grid>
-                <DateTimePicker
-                  autoOk
-                  variant="inline"
-                  inputVariant="outlined"
-                  maxDate={endDate}
-                  disableFuture
-                  value={startDate}
-                  onChange={date => setStartDate(date!)}
-                />
+                <Grid item>
+                  <DateTimePicker
+                    renderInput={props => <TextField {...props} />}
+                    maxDate={endDate}
+                    disableFuture
+                    value={startDate}
+                    onChange={date => setStartDate(date!)}
+                  />
+                </Grid>
                 <Grid item>
                   <Text variant="body3" className={classes.dateTimeText}>
                     to
                   </Text>
                 </Grid>
-                <DateTimePicker
-                  autoOk
-                  variant="inline"
-                  inputVariant="outlined"
-                  disableFuture
-                  value={endDate}
-                  onChange={date => setEndDate(date!)}
-                />
+                <Grid item>
+                  <DateTimePicker
+                    renderInput={props => <TextField {...props} />}
+                    disableFuture
+                    value={endDate}
+                    onChange={date => setEndDate(date!)}
+                  />
+                </Grid>
               </Grid>
             ),
           },
@@ -103,11 +104,7 @@ function LteDashboard() {
   );
 }
 
-function LteNetworkDashboard({
-  startEnd,
-}: {
-  startEnd: [moment.Moment, moment.Moment];
-}) {
+function LteNetworkDashboard({startEnd}: {startEnd: [Date, Date]}) {
   const classes = useStyles();
 
   return (

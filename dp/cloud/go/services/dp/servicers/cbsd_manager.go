@@ -63,38 +63,42 @@ func (c *cbsdManager) UserUpdateCbsd(_ context.Context, request *protos.UpdateCb
 	}
 	return &protos.UpdateCbsdResponse{}, nil
 }
-func (c *cbsdManager) EnodebdUpdateCbsd(ctx context.Context, request *protos.EnodebdUpdateCbsdRequest) (*protos.UpdateCbsdResponse, error) {
+
+func (c *cbsdManager) EnodebdUpdateCbsd(ctx context.Context, request *protos.EnodebdUpdateCbsdRequest) (*protos.CBSDStateResult, error) {
 	data := requestToDbCbsd(request)
-	cbsd, err := c.store.EnodebdUpdateCbsd(data)
+	data.LastSeen = db.MakeTime(clock.Now().UTC())
+	details, err := c.store.EnodebdUpdateCbsd(data)
+	state := &protos.CBSDStateResult{}
+
 	if err != nil {
 		return nil, makeErr(err, "update cbsd")
 	}
-	msg, _ := json.Marshal(request)
-	log := &logs_pusher.DPLog{
-		EventTimestamp:   clock.Now().Unix(),
-		LogFrom:          "CBSD",
-		LogTo:            "DP",
-		LogName:          "EnodebdUpdateCbsd",
-		LogMessage:       string(msg),
-		CbsdSerialNumber: cbsd.CbsdSerialNumber.String,
-		NetworkId:        cbsd.NetworkId.String,
-		FccId:            cbsd.FccId.String,
-	}
-	if err := c.logPusher(ctx, log, c.logConsumerUrl); err != nil {
-		glog.Warningf("Failed to log Enodebd Update. Details: %s", err)
+	if details != nil && details.Cbsd != nil && (details.Cbsd.IsDeleted.Bool || details.Grants == nil) {
+		c.sendLog(ctx, nil, "CbsdStateResponse", "DP", "CBSD", details)
+		return state, nil
 	}
 
-	return &protos.UpdateCbsdResponse{}, nil
-}
+	c.sendLog(ctx, request, "EnodebdUpdateCbsd", "CBSD", "DP", details)
 
-func requestToDbCbsd(request *protos.EnodebdUpdateCbsdRequest) *storage.DBCbsd {
-	cbsd := storage.DBCbsd{
-		CbsdSerialNumber: db.MakeString(request.SerialNumber),
-		CbsdCategory:     db.MakeString(request.CbsdCategory),
+	var channels []*protos.LteChannel
+
+	for _, grant := range details.Grants {
+		channels = append(channels, &protos.LteChannel{
+			LowFrequencyHz:  grant.Grant.LowFrequencyHz.Int64,
+			HighFrequencyHz: grant.Grant.HighFrequencyHz.Int64,
+			MaxEirpDbmMhz:   float32(grant.Grant.MaxEirp.Float64),
+		})
 	}
-	params := request.GetInstallationParam()
-	setInstallationParam(&cbsd, params)
-	return &cbsd
+
+	state = &protos.CBSDStateResult{
+		Channels:                  channels,
+		RadioEnabled:              true,
+		CarrierAggregationEnabled: details.Cbsd.CarrierAggregationEnabled.Bool,
+		Channel:                   channels[0],
+	}
+
+	c.sendLog(ctx, state, "CbsdStateResponse", "DP", "CBSD", details)
+	return state, nil
 }
 
 func (c *cbsdManager) DeleteCbsd(_ context.Context, request *protos.DeleteCbsdRequest) (*protos.DeleteCbsdResponse, error) {
@@ -139,6 +143,42 @@ func (c *cbsdManager) DeregisterCbsd(_ context.Context, request *protos.Deregist
 	return &protos.DeregisterCbsdResponse{}, nil
 }
 
+func (c *cbsdManager) RelinquishCbsd(_ context.Context, request *protos.RelinquishCbsdRequest) (*protos.RelinquishCbsdResponse, error) {
+	err := c.store.RelinquishCbsd(request.NetworkId, request.Id)
+	if err != nil {
+		return nil, makeErr(err, "relinquish cbsd")
+	}
+	return &protos.RelinquishCbsdResponse{}, nil
+}
+
+func (c *cbsdManager) sendLog(ctx context.Context, source interface{}, name string, from string, to string, details *storage.DetailedCbsd) {
+	// TODO maybe we don't have to marshal msg
+	msg, _ := json.Marshal(source)
+	log := &logs_pusher.DPLog{
+		EventTimestamp:   clock.Now().UTC().Unix(),
+		LogFrom:          from,
+		LogTo:            to,
+		LogName:          name,
+		LogMessage:       string(msg),
+		CbsdSerialNumber: details.Cbsd.CbsdSerialNumber.String,
+		NetworkId:        details.Cbsd.NetworkId.String,
+		FccId:            details.Cbsd.FccId.String,
+	}
+	if err := c.logPusher(ctx, log, c.logConsumerUrl); err != nil {
+		glog.Warningf("Failed to log %s. Details: %s", name, err)
+	}
+}
+
+func requestToDbCbsd(request *protos.EnodebdUpdateCbsdRequest) *storage.DBCbsd {
+	cbsd := storage.DBCbsd{
+		CbsdSerialNumber: db.MakeString(request.SerialNumber),
+		CbsdCategory:     db.MakeString(request.CbsdCategory),
+	}
+	params := request.GetInstallationParam()
+	setInstallationParam(&cbsd, params)
+	return &cbsd
+}
+
 func dbPagination(pagination *protos.Pagination) *storage.Pagination {
 	p := &storage.Pagination{}
 	if pagination.Limit != nil {
@@ -172,7 +212,6 @@ func buildCbsd(data *protos.CbsdData) *storage.DBCbsd {
 	capabilities := data.GetCapabilities()
 	preferences := data.GetPreferences()
 	installationParam := data.GetInstallationParam()
-	b, _ := json.Marshal(preferences.GetFrequenciesMhz())
 	cbsd := &storage.DBCbsd{
 		UserId:                    db.MakeString(data.GetUserId()),
 		FccId:                     db.MakeString(data.GetFccId()),
@@ -181,7 +220,7 @@ func buildCbsd(data *protos.CbsdData) *storage.DBCbsd {
 		MaxPower:                  db.MakeFloat(capabilities.GetMaxPower()),
 		NumberOfPorts:             db.MakeInt(capabilities.GetNumberOfAntennas()),
 		PreferredBandwidthMHz:     db.MakeInt(preferences.GetBandwidthMhz()),
-		PreferredFrequenciesMHz:   db.MakeString(string(b)),
+		PreferredFrequenciesMHz:   preferences.GetFrequenciesMhz(),
 		SingleStepEnabled:         db.MakeBool(data.GetSingleStepEnabled()),
 		CbsdCategory:              db.MakeString(data.GetCbsdCategory()),
 		CarrierAggregationEnabled: db.MakeBool(data.GetCarrierAggregationEnabled()),
@@ -199,14 +238,12 @@ func setInstallationParam(cbsd *storage.DBCbsd, params *protos.InstallationParam
 		cbsd.HeightM = dbFloat64OrNil(params.HeightM)
 		cbsd.HeightType = dbStringOrNil(params.HeightType)
 		cbsd.IndoorDeployment = dbBoolOrNil(params.IndoorDeployment)
-		cbsd.AntennaGain = dbFloat64OrNil(params.AntennaGain)
+		cbsd.AntennaGainDbi = dbFloat64OrNil(params.AntennaGain)
 	}
 }
 
 func cbsdFromDatabase(data *storage.DetailedCbsd, inactivityInterval time.Duration) *protos.CbsdDetails {
 	isActive := clock.Since(data.Cbsd.LastSeen.Time) < inactivityInterval
-	var frequencies []int64
-	_ = json.Unmarshal([]byte(data.Cbsd.PreferredFrequenciesMHz.String), &frequencies)
 	return &protos.CbsdDetails{
 		Id: data.Cbsd.Id.Int64,
 		Data: &protos.CbsdData{
@@ -223,7 +260,7 @@ func cbsdFromDatabase(data *storage.DetailedCbsd, inactivityInterval time.Durati
 			},
 			Preferences: &protos.FrequencyPreferences{
 				BandwidthMhz:   data.Cbsd.PreferredBandwidthMHz.Int64,
-				FrequenciesMhz: frequencies,
+				FrequenciesMhz: data.Cbsd.PreferredFrequenciesMHz,
 			},
 			DesiredState:              data.DesiredState.Name.String,
 			InstallationParam:         getInstallationParam(data.Cbsd),
@@ -244,7 +281,7 @@ func getInstallationParam(c *storage.DBCbsd) *protos.InstallationParam {
 	p.IndoorDeployment = protoBoolOrNil(c.IndoorDeployment)
 	p.HeightM = protoDoubleOrNil(c.HeightM)
 	p.HeightType = protoStringOrNil(c.HeightType)
-	p.AntennaGain = protoDoubleOrNil(c.AntennaGain)
+	p.AntennaGain = protoDoubleOrNil(c.AntennaGainDbi)
 	return p
 }
 
@@ -252,8 +289,8 @@ func grantsFromDatabase(grants []*storage.DetailedGrant) []*protos.GrantDetails 
 	const mega int64 = 1e6
 	res := make([]*protos.GrantDetails, len(grants))
 	for i, g := range grants {
-		bw := (g.Grant.HighFrequency.Int64 - g.Grant.LowFrequency.Int64) / mega
-		freq := (g.Grant.HighFrequency.Int64 + g.Grant.LowFrequency.Int64) / (mega * 2)
+		bw := (g.Grant.HighFrequencyHz.Int64 - g.Grant.LowFrequencyHz.Int64) / mega
+		freq := (g.Grant.HighFrequencyHz.Int64 + g.Grant.LowFrequencyHz.Int64) / (mega * 2)
 		res[i] = &protos.GrantDetails{
 			BandwidthMhz:            bw,
 			FrequencyMhz:            freq,

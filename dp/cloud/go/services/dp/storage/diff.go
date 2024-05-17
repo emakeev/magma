@@ -9,20 +9,16 @@ const (
 	distanceThresholdM = 10
 )
 
-func ShouldENodeBDUpdate(prev *DBCbsd, next *DBCbsd) bool {
-	return canUpdate(prev) &&
-		(paramsChanges(next, prev) || coordinatesChanged(next, prev))
-}
-
-func canUpdate(prev *DBCbsd) bool {
-	return !prev.CpiDigitalSignature.Valid
+func ShouldEnodebdUpdateInstallationParams(prev *DBCbsd, next *DBCbsd) bool {
+	// TODO this should probably moved out from storage
+	return paramsChanges(next, prev) || coordinatesChanged(next, prev)
 }
 
 func paramsChanges(prev *DBCbsd, next *DBCbsd) bool {
 	return prev.HeightM != next.HeightM ||
 		prev.HeightType != next.HeightType ||
 		prev.IndoorDeployment != next.IndoorDeployment ||
-		prev.AntennaGain != next.AntennaGain
+		prev.AntennaGainDbi != next.AntennaGainDbi
 }
 
 func coordinatesChanged(prev *DBCbsd, next *DBCbsd) bool {

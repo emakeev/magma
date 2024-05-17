@@ -17,21 +17,21 @@ import type {LteGateway} from '../../../generated';
 
 import ActionTable from '../../components/ActionTable';
 import AddEditGatewayButton from './GatewayDetailConfigEdit';
-import Button from '@material-ui/core/Button';
+import Button from '@mui/material/Button';
 import CardTitleRow from '../../components/layout/CardTitleRow';
 import DataGrid from '../../components/DataGrid';
 import EnodebContext from '../../context/EnodebContext';
 import GatewayContext from '../../context/GatewayContext';
-import Grid from '@material-ui/core/Grid';
+import Grid from '@mui/material/Grid';
 import JsonEditor from '../../components/JsonEditor';
 import React from 'react';
-import SettingsIcon from '@material-ui/icons/Settings';
+import SettingsIcon from '@mui/icons-material/Settings';
 import nullthrows from '../../../shared/util/nullthrows';
 import {DynamicServices} from '../../components/GatewayUtils';
-import {Theme} from '@material-ui/core/styles';
+import {Theme} from '@mui/material/styles';
 import {colors, typography} from '../../theme/default';
 import {getErrorMessage} from '../../util/ErrorUtils';
-import {makeStyles} from '@material-ui/styles';
+import {makeStyles} from '@mui/styles';
 import {useContext, useState} from 'react';
 import {useEnqueueSnackbar} from '../../hooks/useSnackbar';
 import {useNavigate, useParams} from 'react-router-dom';
@@ -139,6 +139,14 @@ export default function GatewayConfig() {
                   <GatewayDynamicServices gwInfo={gwInfo} />
                 </Grid>
 
+                <Grid item xs={12}>
+                  <CardTitleRow
+                    label="EPC"
+                    filter={() => editFilter({editTable: 'epc'})}
+                  />
+                  <GatewayEPC gwInfo={gwInfo} />
+                </Grid>
+
                 {Object.keys(gwInfo.apn_resources || {}).length > 0 && (
                   <Grid item xs={12}>
                     <CardTitleRow
@@ -154,24 +162,26 @@ export default function GatewayConfig() {
               <Grid container spacing={4} alignItems="center">
                 <Grid item xs={12}>
                   <CardTitleRow
-                    label="EPC"
-                    filter={() => editFilter({editTable: 'epc'})}
-                  />
-                  <GatewayEPC gwInfo={gwInfo} />
-                </Grid>
-                <Grid item xs={12}>
-                  <CardTitleRow
                     label="Ran"
                     filter={() => editFilter({editTable: 'ran'})}
                   />
                   <GatewayRAN gwInfo={gwInfo} />
                 </Grid>
+
                 <Grid item xs={12}>
                   <CardTitleRow
                     label="Header Enrichment"
                     filter={() => editFilter({editTable: 'headerEnrichment'})}
                   />
                   <GatewayHE gwInfo={gwInfo} />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <CardTitleRow
+                    label="NGC AMF"
+                    filter={() => editFilter({editTable: 'ngc'})}
+                  />
+                  <GatewayNGC gwInfo={gwInfo} />
                 </Grid>
               </Grid>
             </Grid>
@@ -256,6 +266,43 @@ function GatewayEPC({gwInfo}: {gwInfo: LteGateway}) {
   ];
 
   return <DataGrid data={data} />;
+}
+
+function GatewayNGC({gwInfo}: {gwInfo: LteGateway}) {
+  const data: Array<DataRows> = [
+    [
+      {
+        category: 'Name',
+        value: gwInfo.cellular.ngc?.amf_name ?? '-',
+      },
+    ],
+    [
+      {
+        category: 'Pointer',
+        value: gwInfo.cellular.ngc?.amf_pointer ?? '-',
+      },
+      {
+        category: 'Region ID',
+        value: gwInfo.cellular.ngc?.amf_region_id ?? '-',
+      },
+      {
+        category: 'Set ID',
+        value: gwInfo.cellular.ngc?.amf_set_id ?? '-',
+      },
+    ],
+    [
+      {
+        category: 'Default Slice Service Type',
+        value: gwInfo.cellular.ngc?.amf_default_sst ?? '-',
+      },
+      {
+        category: 'Default Slice Descriptor',
+        value: gwInfo.cellular.ngc?.amf_default_sd ?? '-',
+      },
+    ],
+  ];
+
+  return <DataGrid data={data} testID="ngc-config" />;
 }
 
 function GatewayDynamicServices({gwInfo}: {gwInfo: LteGateway}) {

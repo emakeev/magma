@@ -16,12 +16,11 @@ import type {DataRows} from '../../components/DataGrid';
 import CardTitleRow from '../../components/layout/CardTitleRow';
 import DataGrid from '../../components/DataGrid';
 import FEGGatewayContext from '../../context/FEGGatewayContext';
-import GroupWorkIcon from '@material-ui/icons/GroupWork';
+import GroupWorkIcon from '@mui/icons-material/GroupWork';
 import MagmaAPI from '../../api/MagmaAPI';
-import Paper from '@material-ui/core/Paper';
+import Paper from '@mui/material/Paper';
 import React from 'react';
-import Typography from '@material-ui/core/Typography';
-import moment from 'moment';
+import Typography from '@mui/material/Typography';
 import nullthrows from '../../../shared/util/nullthrows';
 import useMagmaAPI from '../../api/useMagmaAPI';
 import {FederationGateway, PromqlReturnObject} from '../../../generated';
@@ -31,7 +30,8 @@ import {
   HEALTHY_STATUS,
 } from '../../components/GatewayUtils';
 import {GatewayId} from '../../../shared/types/network';
-import {makeStyles} from '@material-ui/styles';
+import {formatRelative, toDate} from 'date-fns';
+import {makeStyles} from '@mui/styles';
 import {useContext} from 'react';
 import {useParams} from 'react-router-dom';
 
@@ -90,7 +90,10 @@ export default function FEGClusterStatus() {
       lastFalloverTime = Math.max(lastFalloverTime, curUpdate);
     });
     lastFalloverTime &&
-      (lastFalloverStatus = moment.unix(lastFalloverTime).calendar());
+      (lastFalloverStatus = formatRelative(
+        toDate(lastFalloverTime),
+        new Date(),
+      ));
     return lastFalloverStatus;
   };
   const getSecondaryFegGatewayId = (

@@ -36,7 +36,7 @@ const (
 	someFccId              = "some_fcc_id"
 	someUserId             = "some_user_id"
 	catB                   = "b"
-	someModel              = "some_model"
+	catA                   = "a"
 )
 
 type DBCbsdBuilder struct {
@@ -50,7 +50,7 @@ func NewDBCbsdBuilder() *DBCbsdBuilder {
 			FccId:                     db.MakeString(someFccId),
 			CbsdSerialNumber:          db.MakeString(someSerialNumber),
 			PreferredBandwidthMHz:     db.MakeInt(20),
-			PreferredFrequenciesMHz:   db.MakeString("[3600]"),
+			PreferredFrequenciesMHz:   []int64{3600},
 			MinPower:                  db.MakeFloat(10),
 			MaxPower:                  db.MakeFloat(20),
 			NumberOfPorts:             db.MakeInt(2),
@@ -70,6 +70,11 @@ func (b *DBCbsdBuilder) Empty() *DBCbsdBuilder {
 
 func (b *DBCbsdBuilder) WithId(id int64) *DBCbsdBuilder {
 	b.Cbsd.Id = db.MakeInt(id)
+	return b
+}
+
+func (b *DBCbsdBuilder) WithIsDeleted(deleted bool) *DBCbsdBuilder {
+	b.Cbsd.IsDeleted = db.MakeBool(deleted)
 	return b
 }
 
@@ -94,7 +99,7 @@ func (b *DBCbsdBuilder) WithUserId(id string) *DBCbsdBuilder {
 }
 
 func (b *DBCbsdBuilder) WithAntennaGain(gain float64) *DBCbsdBuilder {
-	b.Cbsd.AntennaGain = db.MakeFloat(gain)
+	b.Cbsd.AntennaGainDbi = db.MakeFloat(gain)
 	return b
 }
 
@@ -103,23 +108,15 @@ func (b *DBCbsdBuilder) WithLatitude(lat float64) *DBCbsdBuilder {
 	return b
 }
 
+func (b *DBCbsdBuilder) WithEirpCapabilities(minPower float64, maxPower float64, numberOfPorts int64) *DBCbsdBuilder {
+	b.Cbsd.MinPower = db.MakeFloat(minPower)
+	b.Cbsd.MaxPower = db.MakeFloat(maxPower)
+	b.Cbsd.NumberOfPorts = db.MakeInt(numberOfPorts)
+	return b
+}
+
 func (b *DBCbsdBuilder) WithLongitude(lon float64) *DBCbsdBuilder {
 	b.Cbsd.LongitudeDeg = db.MakeFloat(lon)
-	return b
-}
-
-func (b *DBCbsdBuilder) WithNumberOfPorts(num int64) *DBCbsdBuilder {
-	b.Cbsd.NumberOfPorts = db.MakeInt(num)
-	return b
-}
-
-func (b *DBCbsdBuilder) WithMaxPower(pow float64) *DBCbsdBuilder {
-	b.Cbsd.MaxPower = db.MakeFloat(pow)
-	return b
-}
-
-func (b *DBCbsdBuilder) WithMinPower(pow float64) *DBCbsdBuilder {
-	b.Cbsd.MinPower = db.MakeFloat(pow)
 	return b
 }
 
@@ -138,6 +135,22 @@ func (b *DBCbsdBuilder) WithDesiredStateId(t int64) *DBCbsdBuilder {
 	return b
 }
 
+func (b *DBCbsdBuilder) WithChannels(channels []storage.Channel) *DBCbsdBuilder {
+	b.Cbsd.Channels = channels
+	return b
+}
+
+func (b *DBCbsdBuilder) WithPreferences(bandwidthMhz int64, frequenciesMhz []int64) *DBCbsdBuilder {
+	b.Cbsd.PreferredBandwidthMHz = db.MakeInt(bandwidthMhz)
+	b.Cbsd.PreferredFrequenciesMHz = frequenciesMhz
+	return b
+}
+
+func (b *DBCbsdBuilder) WithAvailableFrequencies(frequenciesMhz []uint32) *DBCbsdBuilder {
+	b.Cbsd.AvailableFrequencies = frequenciesMhz
+	return b
+}
+
 func (b *DBCbsdBuilder) WithSerialNumber(serial string) *DBCbsdBuilder {
 	b.Cbsd.CbsdSerialNumber = db.MakeString(serial)
 	return b
@@ -149,7 +162,16 @@ func (b *DBCbsdBuilder) WithFullInstallationParam() *DBCbsdBuilder {
 	b.Cbsd.IndoorDeployment = db.MakeBool(true)
 	b.Cbsd.HeightM = db.MakeFloat(12.5)
 	b.Cbsd.HeightType = db.MakeString("agl")
-	b.Cbsd.AntennaGain = db.MakeFloat(4.5)
+	b.Cbsd.AntennaGainDbi = db.MakeFloat(4.5)
+	return b
+}
+
+func (b *DBCbsdBuilder) WithFullEnodebdAllowedInstallationParam() *DBCbsdBuilder {
+	b.Cbsd.LatitudeDeg = db.MakeFloat(10.5)
+	b.Cbsd.LongitudeDeg = db.MakeFloat(11.5)
+	b.Cbsd.IndoorDeployment = db.MakeBool(true)
+	b.Cbsd.HeightM = db.MakeFloat(12.5)
+	b.Cbsd.HeightType = db.MakeString("agl")
 	return b
 }
 
@@ -190,13 +212,8 @@ func (b *DBCbsdBuilder) WithShouldDeregister(should bool) *DBCbsdBuilder {
 	return b
 }
 
-func (b *DBCbsdBuilder) WithPreferredBandwidthMHz(bandwidth int64) *DBCbsdBuilder {
-	b.Cbsd.PreferredBandwidthMHz = db.MakeInt(bandwidth)
-	return b
-}
-
-func (b *DBCbsdBuilder) WithPreferredFrequenciesMHz(freq string) *DBCbsdBuilder {
-	b.Cbsd.PreferredFrequenciesMHz = db.MakeString(freq)
+func (b *DBCbsdBuilder) WithShouldRelinquish(should bool) *DBCbsdBuilder {
+	b.Cbsd.ShouldRelinquish = db.MakeBool(should)
 	return b
 }
 
@@ -211,19 +228,30 @@ type DBGrantBuilder struct {
 
 func NewDBGrantBuilder() *DBGrantBuilder {
 	return &DBGrantBuilder{
-		Grant: &storage.DBGrant{
-			GrantExpireTime:    db.MakeTime(time.Unix(123, 0).UTC()),
-			TransmitExpireTime: db.MakeTime(time.Unix(456, 0).UTC()),
-			LowFrequency:       db.MakeInt(3590 * 1e6),
-			HighFrequency:      db.MakeInt(3610 * 1e6),
-			MaxEirp:            db.MakeFloat(35),
-			GrantId:            db.MakeString("some_grant_id"),
-		},
+		Grant: &storage.DBGrant{},
 	}
+}
+
+func (b *DBGrantBuilder) WithDefaultTestValues() *DBGrantBuilder {
+	b.Grant = &storage.DBGrant{
+		GrantExpireTime:      db.MakeTime(time.Unix(123, 0).UTC()),
+		TransmitExpireTime:   db.MakeTime(time.Unix(456, 0).UTC()),
+		LowFrequencyHz:       db.MakeInt(3590 * 1e6),
+		HighFrequencyHz:      db.MakeInt(3610 * 1e6),
+		MaxEirp:              db.MakeFloat(35),
+		GrantId:              db.MakeString("some_grant_id"),
+		HeartbeatIntervalSec: db.MakeInt(1),
+	}
+	return b
 }
 
 func (b *DBGrantBuilder) WithId(id int64) *DBGrantBuilder {
 	b.Grant.Id = db.MakeInt(id)
+	return b
+}
+
+func (b *DBGrantBuilder) WithMaxEirp(e float64) *DBGrantBuilder {
+	b.Grant.MaxEirp = db.MakeFloat(e)
 	return b
 }
 
@@ -243,8 +271,42 @@ func (b *DBGrantBuilder) WithGrantId(id string) *DBGrantBuilder {
 }
 
 func (b *DBGrantBuilder) WithFrequency(frequencyMHz int64) *DBGrantBuilder {
-	b.Grant.LowFrequency = db.MakeInt((frequencyMHz - 10) * 1e6)
-	b.Grant.HighFrequency = db.MakeInt((frequencyMHz + 10) * 1e6)
+	b.Grant.LowFrequencyHz = db.MakeInt((frequencyMHz - 10) * 1e6)
+	b.Grant.HighFrequencyHz = db.MakeInt((frequencyMHz + 10) * 1e6)
+	return b
+}
+
+func (b *DBGrantBuilder) WithGrantExpireTime(t time.Time) *DBGrantBuilder {
+	b.Grant.GrantExpireTime = db.MakeTime(t)
+	return b
+}
+
+func (b *DBGrantBuilder) WithTransmitExpireTime(t time.Time) *DBGrantBuilder {
+	b.Grant.TransmitExpireTime = db.MakeTime(t)
+	return b
+}
+
+func (b *DBGrantBuilder) WithLastHeartbeatTime(t time.Time) *DBGrantBuilder {
+	b.Grant.LastHeartbeatRequestTime = db.MakeTime(t)
+	return b
+}
+
+type CbsdStateResultBuilder struct {
+	Result *protos.CBSDStateResult
+}
+
+func NewCbsdStateResultBuilder(radioEnabled bool, carrierAggregation bool) *CbsdStateResultBuilder {
+	return &CbsdStateResultBuilder{
+		Result: &protos.CBSDStateResult{
+			RadioEnabled:              radioEnabled,
+			CarrierAggregationEnabled: carrierAggregation,
+		},
+	}
+}
+
+func (b *CbsdStateResultBuilder) WithChannels(c []*protos.LteChannel) *CbsdStateResultBuilder {
+	b.Result.Channels = c
+	b.Result.Channel = c[0]
 	return b
 }
 
@@ -308,6 +370,17 @@ func (b *CbsdProtoPayloadBuilder) WithAntennaGain(gain float64) *CbsdProtoPayloa
 	return b
 }
 
+func (b *CbsdProtoPayloadBuilder) WithEnodebdInstallationParams() *CbsdProtoPayloadBuilder {
+	b.Payload.InstallationParam = &protos.InstallationParam{
+		LatitudeDeg:      wrapperspb.Double(10.5),
+		LongitudeDeg:     wrapperspb.Double(11.5),
+		IndoorDeployment: wrapperspb.Bool(true),
+		HeightM:          wrapperspb.Double(12.5),
+		HeightType:       wrapperspb.String("agl"),
+	}
+	return b
+}
+
 func (b *CbsdProtoPayloadBuilder) WithFullInstallationParam() *CbsdProtoPayloadBuilder {
 	b.Payload.InstallationParam = &protos.InstallationParam{
 		LatitudeDeg:      wrapperspb.Double(10.5),
@@ -344,14 +417,31 @@ func (b *DetailedDBCbsdBuilder) WithCbsd(cbsd *storage.DBCbsd, state string, des
 	return b
 }
 
-func (b *DetailedDBCbsdBuilder) WithGrant(state string, frequencyMHz int64) *DetailedDBCbsdBuilder {
+func (b *DetailedDBCbsdBuilder) WithGrant(state string, frequencyMHz int64, grantExpireTime time.Time, transmitExpireTime time.Time) *DetailedDBCbsdBuilder {
 	grant := &storage.DetailedGrant{
 		Grant: &storage.DBGrant{
-			GrantExpireTime:    db.MakeTime(time.Unix(123, 0).UTC()),
-			TransmitExpireTime: db.MakeTime(time.Unix(456, 0).UTC()),
-			LowFrequency:       db.MakeInt((frequencyMHz - 10) * 1e6),
-			HighFrequency:      db.MakeInt((frequencyMHz + 10) * 1e6),
+			GrantExpireTime:    db.MakeTime(grantExpireTime),
+			TransmitExpireTime: db.MakeTime(transmitExpireTime),
+			LowFrequencyHz:     db.MakeInt((frequencyMHz - 10) * 1e6),
+			HighFrequencyHz:    db.MakeInt((frequencyMHz + 10) * 1e6),
 			MaxEirp:            db.MakeFloat(35),
+		},
+		GrantState: &storage.DBGrantState{
+			Name: db.MakeString(state),
+		},
+	}
+	b.Details.Grants = append(b.Details.Grants, grant)
+	return b
+}
+
+func (b *DetailedDBCbsdBuilder) WithAmcGrant(state string, frequencyMHz int64, lastHeartbeatTime time.Time, grantId string, heartbeatInterval int64) *DetailedDBCbsdBuilder {
+	grant := &storage.DetailedGrant{
+		Grant: &storage.DBGrant{
+			GrantId:                  db.MakeString(grantId),
+			LowFrequencyHz:           db.MakeInt((frequencyMHz - 10) * 1e6),
+			HighFrequencyHz:          db.MakeInt((frequencyMHz + 10) * 1e6),
+			LastHeartbeatRequestTime: db.MakeTime(lastHeartbeatTime),
+			HeartbeatIntervalSec:     db.MakeInt(heartbeatInterval),
 		},
 		GrantState: &storage.DBGrantState{
 			Name: db.MakeString(state),
@@ -624,13 +714,13 @@ type DPLogBuilder struct {
 	Log *logs_pusher.DPLog
 }
 
-func NewDPLogBuilder() *DPLogBuilder {
+func NewDPLogBuilder(from string, to string, name string) *DPLogBuilder {
 	return &DPLogBuilder{Log: &logs_pusher.DPLog{
 		EventTimestamp:   clock.Now().Unix(),
-		LogFrom:          "CBSD",
-		LogTo:            "DP",
-		LogName:          "EnodebdUpdateCbsd",
-		LogMessage:       "some log message",
+		LogFrom:          from,
+		LogTo:            to,
+		LogName:          name,
+		LogMessage:       "null",
 		CbsdSerialNumber: "some_serial_number",
 		NetworkId:        "some_network",
 		FccId:            "some_fcc_id",
@@ -640,4 +730,19 @@ func NewDPLogBuilder() *DPLogBuilder {
 func (b *DPLogBuilder) WithLogMessage(m string) *DPLogBuilder {
 	b.Log.LogMessage = m
 	return b
+}
+
+func NewRequestBuilder(id int64, cbsdId int64, typeId int64, payload string) *RequestBuilder {
+	return &RequestBuilder{
+		Request: &storage.DBRequest{
+			Id:      db.MakeInt(id),
+			TypeId:  db.MakeInt(typeId),
+			CbsdId:  db.MakeInt(cbsdId),
+			Payload: db.MakeString(payload),
+		},
+	}
+}
+
+type RequestBuilder struct {
+	Request *storage.DBRequest
 }

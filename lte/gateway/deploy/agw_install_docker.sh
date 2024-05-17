@@ -14,7 +14,7 @@ MODE=$1
 RERUN=0    # Set to 1 to skip network configuration and run ansible playbook only
 WHOAMI=$(whoami)
 MAGMA_USER="ubuntu"
-MAGMA_VERSION="${MAGMA_VERSION:-master}"
+MAGMA_VERSION="${MAGMA_VERSION:-v1.8}"
 GIT_URL="${GIT_URL:-https://github.com/magma/magma.git}"
 DEPLOY_PATH="/opt/magma/lte/gateway/deploy"
 
@@ -67,7 +67,17 @@ EOF
   echo "Install Magma"
   apt-get update -y
   apt-get upgrade -y
-  apt-get install curl zip python3-pip docker.io net-tools sudo docker-compose -y
+  apt-get install curl zip python3-pip net-tools sudo ca-certificates gnupg lsb-release -y
+
+  mkdir -p /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  apt-get update -y
+  apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+
 
   echo "Making sure $MAGMA_USER user is sudoers"
   if ! grep -q "$MAGMA_USER ALL=(ALL) NOPASSWD:ALL" /etc/sudoers; then
@@ -79,7 +89,8 @@ EOF
   fi
 
   alias python=python3
-  pip3 install ansible
+  # TODO GH13915 pinned for now because of breaking change in ansible-core 2.13.4
+  pip3 install ansible==5.0.1
 
   rm -rf /opt/magma/
   git clone "${GIT_URL}" /opt/magma

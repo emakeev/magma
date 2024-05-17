@@ -12,12 +12,12 @@
  */
 
 import AppContext from '../../context/AppContext';
-import AssessmentIcon from '@material-ui/icons/Assessment';
-import ExploreIcon from '@material-ui/icons/Explore';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import ExploreIcon from '@mui/icons-material/Explore';
 import Explorer from '../../views/metrics/Explorer';
 import GatewayMetrics from '../insights/GatewayMetrics';
 import Grafana from '../Grafana';
-import ListIcon from '@material-ui/icons/ListAlt';
+import ListIcon from '@mui/icons-material/ListAlt';
 import LogsList from '../../views/domain-proxy/LogsList';
 import NetworkKPIs from './NetworkKPIs';
 import React, {useContext} from 'react';
@@ -43,6 +43,42 @@ const CONFIGS: Array<MetricGraphConfig> = [
       },
     ],
     label: 'Connected Subscribers',
+  },
+  {
+    basicQueryConfigs: [
+      {
+        metric: 'ue_connected_5g',
+        filters: [{name: 'service', value: 'amf'}],
+      },
+    ],
+    label: 'Connected Subscribers 5G',
+  },
+  {
+    basicQueryConfigs: [
+      {
+        metric: 'ue_registered_5g',
+        filters: [{name: 'service', value: 'amf'}],
+      },
+    ],
+    label: 'Number of UEs registered succesfully',
+  },
+  {
+    basicQueryConfigs: [
+      {
+        metric: 'ue_idle_5g',
+        filters: [{name: 'service', value: 'amf'}],
+      },
+    ],
+    label: 'Number of Idle UEs',
+  },
+  {
+    basicQueryConfigs: [
+      {
+        metric: 'pdu_sessions',
+        filters: [{name: 'service', value: 'amf'}],
+      },
+    ],
+    label: 'Number of Active PDU Sessions',
   },
   {
     customQueryConfigs: [

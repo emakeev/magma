@@ -20,42 +20,43 @@ import type {
   GatewayHeConfig,
   GatewayHeConfigHeEncodingTypeEnum,
   GatewayLoggingConfigs,
+  GatewayNgcConfigs,
   GatewayRanConfigs,
   LteGateway,
   MagmadGatewayConfigs,
 } from '../../../generated';
 
-import Accordion from '@material-ui/core/Accordion';
-import AccordionDetails from '@material-ui/core/AccordionDetails';
-import AccordionSummary from '@material-ui/core/AccordionSummary';
-import AddIcon from '@material-ui/icons/Add';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AddIcon from '@mui/icons-material/Add';
 import ApnContext from '../../context/ApnContext';
-import Button from '@material-ui/core/Button';
-import Checkbox from '@material-ui/core/Checkbox';
-import DeleteIcon from '@material-ui/icons/Delete';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import DeleteIcon from '@mui/icons-material/Delete';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '../../theme/design-system/DialogTitle';
 import EnodebContext from '../../context/EnodebContext';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import FormControl from '@material-ui/core/FormControl';
-import FormLabel from '@material-ui/core/FormLabel';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
 import GatewayContext from '../../context/GatewayContext';
-import Grid from '@material-ui/core/Grid';
-import IconButton from '@material-ui/core/IconButton';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
-import ListItemText from '@material-ui/core/ListItemText';
+import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
+import ListItemText from '@mui/material/ListItemText';
 import LteNetworkContext from '../../context/LteNetworkContext';
-import MenuItem from '@material-ui/core/MenuItem';
-import OutlinedInput from '@material-ui/core/OutlinedInput';
+import MenuItem from '@mui/material/MenuItem';
+import OutlinedInput from '@mui/material/OutlinedInput';
 import React from 'react';
-import Select from '@material-ui/core/Select';
-import Switch from '@material-ui/core/Switch';
-import Tab from '@material-ui/core/Tab';
-import Tabs from '@material-ui/core/Tabs';
+import Select from '@mui/material/Select';
+import Switch from '@mui/material/Switch';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Text from '../../theme/design-system/Text';
 import nullthrows from '../../../shared/util/nullthrows';
 
@@ -72,7 +73,7 @@ import {
 } from '../../../generated';
 import {colors, typography} from '../../theme/default';
 import {getErrorMessage} from '../../util/ErrorUtils';
-import {makeStyles} from '@material-ui/styles';
+import {makeStyles} from '@mui/styles';
 import {useContext, useEffect, useState} from 'react';
 import {useEnqueueSnackbar} from '../../hooks/useSnackbar';
 import {useParams} from 'react-router-dom';
@@ -85,6 +86,7 @@ const AGGREGATION_TITLE = 'Aggregation';
 const EPC_TITLE = 'Epc';
 const APN_RESOURCES_TITLE = 'APN Resources';
 const HEADER_ENRICHMENT_TITLE = 'Header Enrichment';
+const NGC_TITLE = 'NGC AMF';
 
 const useStyles = makeStyles({
   appBarBtn: {
@@ -102,7 +104,6 @@ const useStyles = makeStyles({
   },
   tabBar: {
     backgroundColor: colors.primary.brightGray,
-    color: colors.primary.white,
   },
   selectMenu: {
     maxHeight: '200px',
@@ -128,6 +129,7 @@ const EditTableType = {
   ran: 3,
   apnResources: 4,
   headerEnrichment: 5,
+  ngc: 6,
 };
 
 export type EditProps = {
@@ -205,7 +207,7 @@ export function GatewayEditDialog(props: DialogProps) {
   }, [editProps, open]);
 
   return (
-    <Dialog data-testid="editDialog" open={open} fullWidth={true} maxWidth="md">
+    <Dialog data-testid="editDialog" open={open} fullWidth={true} maxWidth="lg">
       <DialogTitle
         label={editProps ? 'Edit Gateway' : 'Add New Gateway'}
         onClose={onClose}
@@ -245,6 +247,12 @@ export function GatewayEditDialog(props: DialogProps) {
           data-testid="headerEnrichmentTab"
           disabled={!editProps}
           label={HEADER_ENRICHMENT_TITLE}
+        />
+        <Tab
+          key="ngc"
+          data-testid="ngcTab"
+          disabled={!editProps}
+          label={NGC_TITLE}
         />
         ;
       </Tabs>
@@ -332,7 +340,19 @@ export function GatewayEditDialog(props: DialogProps) {
             setGateway(gateway);
             if (editProps) {
               onClose();
+            } else {
+              setTabPos(tabPos + 1);
             }
+          }}
+        />
+      )}
+      {tabPos === 6 && (
+        <NextGenerationCoreConfig
+          isAdd={!editProps}
+          gateway={!editProps ? gateway : ctx.state[gatewayId]}
+          onClose={onClose}
+          onSave={(gateway: LteGateway) => {
+            setGateway(gateway);
             onClose();
           }}
         />
@@ -895,10 +915,10 @@ export function RanEdit(props: Props) {
               }}
               MenuProps={{classes: {paper: classes.selectMenu}}}
               renderValue={selected => {
-                if (!(selected as EnodebSerials).length) {
+                if (!selected.length) {
                   return 'Select eNodeBs';
                 }
-                return (selected as EnodebSerials).join(', ');
+                return selected.join(', ');
               }}
               input={
                 <OutlinedInput
@@ -1051,7 +1071,8 @@ export function ApnResourcesEdit(props: Props) {
                         onClick={event => {
                           event.stopPropagation();
                           deleteApn(apn);
-                        }}>
+                        }}
+                        size="large">
                         <DeleteIcon />
                       </IconButton>
                     </ListItemSecondaryAction>
@@ -1066,7 +1087,7 @@ export function ApnResourcesEdit(props: Props) {
                       value={apn.apn_name}
                       onChange={({target}) => {
                         const apns = apnResourcesRows;
-                        apns[index].apn_name = target.value as string;
+                        apns[index].apn_name = target.value;
                         setApnResourcesRows([...apns]);
                       }}
                       input={<OutlinedInput />}>
@@ -1301,6 +1322,147 @@ export function HeaderEnrichmentConfig(props: Props) {
               </AltFormField>
             </Grid>
           )}
+        </List>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={props.onClose}>Cancel</Button>
+        <Button
+          onClick={() => void onSave()}
+          variant="contained"
+          color="primary">
+          {props.isAdd ? 'Save And Continue' : 'Save'}
+        </Button>
+      </DialogActions>
+    </>
+  );
+}
+
+export function NextGenerationCoreConfig(props: Props) {
+  const enqueueSnackbar = useEnqueueSnackbar();
+  const [error, setError] = useState('');
+  const ctx = useContext(GatewayContext);
+
+  const [ngcConfig, setNgcConfig] = useState<GatewayNgcConfigs>(
+    props.gateway.cellular.ngc ?? {},
+  );
+
+  useEffect(() => {
+    setNgcConfig(props.gateway.cellular.ngc ?? {});
+    setError('');
+  }, [props.gateway.cellular.ngc]);
+
+  const handleNgcChange = <K extends keyof GatewayNgcConfigs>(
+    key: K,
+    val: GatewayNgcConfigs[K],
+  ) => {
+    setNgcConfig({
+      ...ngcConfig,
+      [key]: val !== '' ? val : undefined,
+    });
+  };
+
+  const onSave = async () => {
+    try {
+      const gateway = {
+        ...props.gateway,
+        cellular: {
+          ...props.gateway.cellular,
+          ngc: ngcConfig,
+        },
+      };
+      await ctx.updateGateway({
+        gatewayId: gateway.id,
+        cellularConfigs: gateway.cellular,
+      });
+
+      enqueueSnackbar('Gateway saved successfully', {
+        variant: 'success',
+      });
+      props.onSave(gateway);
+    } catch (error) {
+      setError(getErrorMessage(error));
+    }
+  };
+  return (
+    <>
+      <DialogContent data-testid="ngcEdit">
+        <List>
+          {error !== '' && (
+            <AltFormField label={''}>
+              <FormLabel error>{error}</FormLabel>
+            </AltFormField>
+          )}
+          <AltFormField label={'Name'}>
+            <OutlinedInput
+              data-testid="amfName"
+              placeholder="amf.example.org"
+              type="string"
+              fullWidth={true}
+              value={ngcConfig.amf_name}
+              onChange={({target}) => handleNgcChange('amf_name', target.value)}
+            />
+          </AltFormField>
+          <AltFormField label={'Pointer'}>
+            <OutlinedInput
+              data-testid="amfPointer"
+              placeholder="1F"
+              type="string"
+              fullWidth={true}
+              value={ngcConfig.amf_pointer}
+              onChange={({target}) =>
+                handleNgcChange('amf_pointer', target.value)
+              }
+            />
+          </AltFormField>
+          <AltFormField label={'Region ID'}>
+            <OutlinedInput
+              data-testid="amfRegionID"
+              placeholder="C1"
+              type="string"
+              fullWidth={true}
+              value={ngcConfig.amf_region_id}
+              onChange={({target}) =>
+                handleNgcChange('amf_region_id', target.value)
+              }
+            />
+          </AltFormField>
+          <AltFormField label={'Set ID'}>
+            <OutlinedInput
+              data-testid="amfSetID"
+              placeholder="2A1"
+              type="string"
+              fullWidth={true}
+              value={ngcConfig.amf_set_id}
+              onChange={({target}) =>
+                handleNgcChange('amf_set_id', target.value)
+              }
+            />
+          </AltFormField>
+          <AltFormField label={'Default Slice Service Type'}>
+            <OutlinedInput
+              data-testid="amfDefaultSliceServiceType"
+              placeholder="3"
+              type="number"
+              inputProps={{min: 0, max: 255}}
+              fullWidth={true}
+              value={ngcConfig.amf_default_sst}
+              onChange={({target}) =>
+                handleNgcChange('amf_default_sst', parseInt(target.value))
+              }
+            />
+          </AltFormField>
+          <AltFormField label={'Default Slice Descriptor'}>
+            <OutlinedInput
+              data-testid="amfDefaultSliceDescriptor"
+              placeholder="AFAF"
+              type="string"
+              fullWidth={true}
+              value={ngcConfig.amf_default_sd}
+              onChange={({target}) =>
+                handleNgcChange('amf_default_sd', target.value)
+              }
+            />
+          </AltFormField>
         </List>
       </DialogContent>
       <DialogActions>

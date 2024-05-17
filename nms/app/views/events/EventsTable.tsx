@@ -15,22 +15,21 @@ import ActionTable, {TableRef} from '../../components/ActionTable';
 import AutorefreshCheckbox from '../../components/AutorefreshCheckbox';
 import CardTitleRow from '../../components/layout/CardTitleRow';
 import EventChart from './EventChart';
-import ExpandLess from '@material-ui/icons/ExpandLess';
-import ExpandMore from '@material-ui/icons/ExpandMore';
-import Grid from '@material-ui/core/Grid';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import Grid from '@mui/material/Grid';
 import MagmaAPI from '../../api/MagmaAPI';
-import MyLocationIcon from '@material-ui/icons/MyLocation';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import React from 'react';
 import Text from '../../theme/design-system/Text';
-import moment from 'moment';
+import TextField from '@mui/material/TextField';
 import nullthrows from '../../../shared/util/nullthrows';
-import {DateTimePicker} from '@material-ui/pickers';
-import {Event as MagmaEvent} from '../../../generated';
+import {DateTimePicker} from '@mui/x-date-pickers/DateTimePicker';
 import {MaterialTableProps} from '@material-table/core';
-import {Theme} from '@material-ui/core/styles';
+import {Theme} from '@mui/material/styles';
 import {colors} from '../../theme/default';
 import {getStep} from '../../components/CustomMetrics';
-import {makeStyles} from '@material-ui/styles';
+import {makeStyles} from '@mui/styles';
 import {useCallback} from 'react';
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useParams} from 'react-router-dom';
@@ -162,8 +161,8 @@ async function handleEventQuery(
   tags: string,
   query: ActionQuery,
   from: number,
-  start: moment.Moment,
-  end: moment.Moment,
+  start: Date,
+  end: Date,
 ): Promise<{data: Array<EventRowType>; page: number; totalCount: number}> {
   const filters = buildEventQueryFromFilters(query);
   try {
@@ -173,15 +172,12 @@ async function handleEventQuery(
         streams: streams,
         hwIds: hardwareId,
         tags: tags,
-        // TODO[ts-migration] "from" does not appear in API
-        // @ts-ignore
-        from,
         start: start.toISOString(),
         end: end.toISOString(),
         ...filters,
       })
     ).data;
-    const eventResp = (
+    const unfiltered = (
       await MagmaAPI.events.eventsNetworkIdGet({
         networkId: networkId,
         hwIds: hardwareId,
@@ -198,8 +194,6 @@ async function handleEventQuery(
       eventCount < query.page * query.pageSize
         ? eventCount / query.pageSize
         : query.page;
-    // TODO[ts-migration] There is a serious type mismatch here. Investigate!
-    const unfiltered = (eventResp as unknown) as Array<MagmaEvent>;
     const data = unfiltered.map(event => {
       return {
         ts: event.timestamp,
@@ -230,8 +224,8 @@ type EventTableProps = {
   tags?: string;
   hardwareId?: string;
   sz: 'sm' | 'md' | 'lg';
-  inStartDate?: moment.Moment;
-  inEndDate?: moment.Moment;
+  inStartDate?: Date;
+  inEndDate?: Date;
   isAutoRefreshing?: boolean;
 };
 
@@ -387,9 +381,7 @@ export default function EventsTable(props: EventTableProps) {
                   </Grid>
                   <Grid item>
                     <DateTimePicker
-                      autoOk
-                      variant="inline"
-                      inputVariant="outlined"
+                      renderInput={props => <TextField {...props} />}
                       maxDate={endDate}
                       disableFuture
                       value={startDate}
@@ -406,9 +398,7 @@ export default function EventsTable(props: EventTableProps) {
                   </Grid>
                   <Grid item>
                     <DateTimePicker
-                      autoOk
-                      variant="inline"
-                      inputVariant="outlined"
+                      renderInput={props => <TextField {...props} />}
                       disableFuture
                       value={endDate}
                       onChange={date => {

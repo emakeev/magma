@@ -37,6 +37,7 @@ import type {
 import asyncHandler from '../util/asyncHandler';
 import crypto from 'crypto';
 import {SSOSelectedType} from '../../shared/types/auth';
+import {rateLimitMiddleware} from '../middleware';
 
 const logger = logging.getLogger(module);
 const PASSWORD_FOR_LOGGING = '<SECRET>';
@@ -107,6 +108,7 @@ function userMiddleware(options: Options) {
 
   router.get(
     '/login',
+    rateLimitMiddleware,
     asyncHandler(
       async (req: Request<never, any, never, {to?: string}>, res, next) => {
         try {
@@ -175,6 +177,7 @@ function userMiddleware(options: Options) {
   );
   router.get(
     '/login/oidc/callback',
+    rateLimitMiddleware,
     (req: Request<never, any, never, {to?: string}>, res, next) => {
       const to = req.query.to;
       const loginSuccessUrl =
@@ -196,7 +199,7 @@ function userMiddleware(options: Options) {
     },
   );
 
-  router.get('/logout', (req: Request, res) => {
+  router.get('/logout', rateLimitMiddleware, (req: Request, res) => {
     if (req.isAuthenticated()) {
       req.logout();
     }
@@ -226,7 +229,7 @@ function userMiddleware(options: Options) {
       });
       res.status(200).send({users});
     } catch (error) {
-      res.status(400).send({error: (error as Error).toString()});
+      res.status(400).send({message: (error as Error).toString()});
     }
   });
 
@@ -311,7 +314,7 @@ function userMiddleware(options: Options) {
         );
         res.status(201).send({user});
       } catch (error) {
-        res.status(400).send({error: (error as Error).toString()});
+        res.status(400).send({message: (error as Error).toString()});
         await logUserChange(req, req.user, 'CREATE', req.body, 'FAILURE');
       }
     },

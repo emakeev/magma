@@ -20,7 +20,7 @@ import s1ap_wrapper
 from integ_tests.s1aptests.s1ap_utils import SpgwUtil
 
 
-class TestMaximumBearersTwoPdnsPerUe(unittest.TestCase):
+class TestAttachDetachMaxBearersTwoPdns(unittest.TestCase):
     """Test maximum bearers with two pdns"""
 
     def setUp(self):
@@ -96,9 +96,7 @@ class TestMaximumBearersTwoPdnsPerUe(unittest.TestCase):
             )
 
             response = self._s1ap_wrapper.s1_util.get_response()
-            self.assertEqual(
-                response.msg_type, s1ap_types.tfwCmd.UE_ACT_DED_BER_REQ.value,
-            )
+            assert response.msg_type == s1ap_types.tfwCmd.UE_ACT_DED_BER_REQ.value
             act_ded_ber_req_oai_apn = response.cast(
                 s1ap_types.UeActDedBearCtxtReq_t,
             )
@@ -113,9 +111,7 @@ class TestMaximumBearersTwoPdnsPerUe(unittest.TestCase):
             self._s1ap_wrapper.sendPdnConnectivityReq(ue_id, apn)
             # Receive PDN CONN RSP/Activate default EPS bearer context req
             response = self._s1ap_wrapper.s1_util.get_response()
-            self.assertEqual(
-                response.msg_type, s1ap_types.tfwCmd.UE_PDN_CONN_RSP_IND.value,
-            )
+            assert response.msg_type == s1ap_types.tfwCmd.UE_PDN_CONN_RSP_IND.value
             act_def_bearer_req = response.cast(s1ap_types.uePdnConRsp_t)
             addr = act_def_bearer_req.m.pdnInfo.pAddr.addrInfo
             sec_ip = ipaddress.ip_address(bytes(addr[:4]))
@@ -151,10 +147,7 @@ class TestMaximumBearersTwoPdnsPerUe(unittest.TestCase):
                     qci_val=idx + 1,
                 )
                 response = self._s1ap_wrapper.s1_util.get_response()
-                self.assertEqual(
-                    response.msg_type,
-                    s1ap_types.tfwCmd.UE_ACT_DED_BER_REQ.value,
-                )
+                assert response.msg_type == s1ap_types.tfwCmd.UE_ACT_DED_BER_REQ.value
                 act_ded_ber_req_ims_apn = response.cast(
                     s1ap_types.UeActDedBearCtxtReq_t,
                 )

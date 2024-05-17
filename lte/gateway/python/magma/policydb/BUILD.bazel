@@ -10,6 +10,7 @@
 # limitations under the License.
 
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//bazel:test_constants.bzl", "TAG_SERVICE")
 
 MAGMA_ROOT = "../../../../../"
 
@@ -28,7 +29,11 @@ py_binary(
     legacy_create_init = False,
     main = "main.py",
     python_version = "PY3",
-    visibility = ["//visibility:private"],
+    tags = TAG_SERVICE,
+    visibility = [
+        "//:__pkg__",
+        "//lte/gateway/python:__pkg__",
+    ],
     deps = [
         ":policydb_lib",
         "//lte/gateway/python/magma/policydb/servicers:policy_servicer",
@@ -45,24 +50,54 @@ py_binary(
 py_library(
     name = "policydb_lib",
     srcs = [
-        "apn_rule_map_store.py",
-        "basename_store.py",
-        "rating_group_store.py",
         "reauth_handler.py",
-        "rule_map_store.py",
-        "rule_store.py",
         "streamer_callback.py",
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":apn_rule_map_store",
+        ":basename_store",
         ":default_rules",
+        ":rating_group_store",
+        ":rule_map_store",
+        ":rule_store",
         "//orc8r/gateway/python/magma/common:rpc_utils",
         "//orc8r/gateway/python/magma/common:sentry",
         "//orc8r/gateway/python/magma/common:serialization_utils",
         "//orc8r/gateway/python/magma/common:service",
         "//orc8r/gateway/python/magma/common:streamer",
-        "//orc8r/gateway/python/magma/common/redis:client",
     ],
+)
+
+py_library(
+    name = "rule_store",
+    srcs = ["rule_store.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "rule_map_store",
+    srcs = ["rule_map_store.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "rating_group_store",
+    srcs = ["rating_group_store.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "basename_store",
+    srcs = ["basename_store.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "apn_rule_map_store",
+    srcs = ["apn_rule_map_store.py"],
+    visibility = ["//visibility:public"],
+    deps = ["//orc8r/gateway/python/magma/common/redis:client"],
 )
 
 py_library(

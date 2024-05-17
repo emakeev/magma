@@ -13,10 +13,8 @@
 
 import FEGEquipmentDashboard from '../FEGEquipmentDashboard';
 import MagmaAPI from '../../../api/MagmaAPI';
-import MuiStylesThemeProvider from '@material-ui/styles/ThemeProvider';
 import React from 'react';
 import defaultTheme from '../../../theme/default';
-import moment from 'moment';
 import {AxiosResponse} from 'axios';
 import {FEGGatewayContextProvider} from '../../../context/FEGGatewayContext';
 import {
@@ -24,8 +22,9 @@ import {
   FederationGatewaysApiFegNetworkIdGatewaysPostRequest,
 } from '../../../../generated';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
-import {MuiThemeProvider} from '@material-ui/core/styles';
+import {StyledEngineProvider, ThemeProvider} from '@mui/material/styles';
 import {fireEvent, render, waitFor} from '@testing-library/react';
+import {formatRelative, getUnixTime, toDate} from 'date-fns';
 import {mockAPI, mockAPIOnce} from '../../../util/TestUtils';
 import type {
   Csfb,
@@ -168,11 +167,14 @@ const mockKPIMetric: PromqlReturnObject = {
   },
 };
 
-const lastFalloverTimeResponse1 = moment().unix();
+const lastFalloverTimeResponse1 = getUnixTime(new Date());
 
-const lastFalloverTimeResponse2 = moment().unix();
+const lastFalloverTimeResponse2 = getUnixTime(new Date());
 
-const lastFalloverTime = `${moment.unix(lastFalloverTimeResponse2).calendar()}`;
+const lastFalloverTime = `${formatRelative(
+  toDate(lastFalloverTimeResponse2),
+  new Date(),
+)}`;
 
 const mockFalloverStatus: PromqlReturnObject = {
   status: 'success',
@@ -284,8 +286,8 @@ describe('<FEGEquipmentDashboard />', () => {
     <MemoryRouter
       initialEntries={['/nms/mynetwork/overview/gateway']}
       initialIndex={0}>
-      <MuiThemeProvider theme={defaultTheme}>
-        <MuiStylesThemeProvider theme={defaultTheme}>
+      <StyledEngineProvider injectFirst>
+        <ThemeProvider theme={defaultTheme}>
           <FEGGatewayContextProvider networkId="mynetwork">
             <Routes>
               <Route
@@ -294,8 +296,8 @@ describe('<FEGEquipmentDashboard />', () => {
               />
             </Routes>
           </FEGGatewayContextProvider>
-        </MuiStylesThemeProvider>
-      </MuiThemeProvider>
+        </ThemeProvider>
+      </StyledEngineProvider>
     </MemoryRouter>
   );
 

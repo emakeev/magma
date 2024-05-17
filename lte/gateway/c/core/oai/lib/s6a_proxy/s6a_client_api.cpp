@@ -30,6 +30,8 @@
 #include "lte/gateway/c/core/oai/lib/itti/intertask_interface.h"
 #include "lte/gateway/c/core/oai/lib/itti/intertask_interface_types.h"
 #include "lte/gateway/c/core/oai/lib/itti/itti_types.h"
+#include "lte/gateway/c/core/oai/lib/store/sqlite.hpp"
+#include "lte/protos/subscriberdb.pb.h"
 
 extern "C" {}
 
@@ -50,7 +52,7 @@ bool s6a_purge_ue(const char* imsi) {
                                        feg::PurgeUEAnswer response) {
     auto log_level = "ERROR";
     if (status.ok() &&
-        response.error_code() < feg::ErrorCode::COMMAND_UNSUPORTED) {
+        response.error_code() < feg::ErrorCode::COMMAND_UNSUPPORTED) {
       log_level = "INFO";
     }
     // For now, do nothing, just log
@@ -74,7 +76,7 @@ static void s6a_handle_authentication_info_ans(
   itti_msg->imsi_length = imsi_length;
 
   if (status.ok()) {
-    if (response.error_code() < feg::ErrorCode::COMMAND_UNSUPORTED) {
+    if (response.error_code() < feg::ErrorCode::COMMAND_UNSUPPORTED) {
       std::cout << "[INFO] "
                 << "Received S6A-AUTHENTICATION_INFORMATION_ANSWER for IMSI: "
                 << imsi << "; Status: " << status.error_message()
@@ -135,7 +137,7 @@ static void s6a_handle_update_location_ans(const std::string& imsi,
   itti_msg->imsi_length = imsi_length;
 
   if (status.ok()) {
-    if (response.error_code() < feg::ErrorCode::COMMAND_UNSUPORTED) {
+    if (response.error_code() < feg::ErrorCode::COMMAND_UNSUPPORTED) {
       std::cout << "[INFO] Received S6A-LOCATION-UPDATE_ANSWER for IMSI: "
                 << imsi << "; Status: " << status.error_message()
                 << "; StatusCode: " << response.error_code() << std::endl;
@@ -144,6 +146,19 @@ static void s6a_handle_update_location_ans(const std::string& imsi,
       itti_msg->result.choice.base = DIAMETER_SUCCESS;
       magma::convert_proto_msg_to_itti_s6a_update_location_ans(response,
                                                                itti_msg);
+
+      // convert ULA response to SubscriberData and write to subscriberdb
+      if (S6aClient::get_cloud_subscriberdb_enabled()) {
+        magma::lte::SubscriberData sub_data = magma::lte::SubscriberData();
+        auto sub_id = sub_data.mutable_sid();
+        sub_id->set_id(imsi);
+        sub_id->set_type(magma::lte::SubscriberID::IMSI);
+        magma::S6aClient::convert_ula_to_subscriber_data(response, &sub_data);
+        magma::lte::SqliteStore* sqlObj = new magma::lte::SqliteStore(
+            "/var/opt/magma/", 2);  // location is same as SubscriberDB
+        sqlObj->add_subscriber(sub_data);
+      }
+
     } else {
       itti_msg->result.present = S6A_RESULT_EXPERIMENTAL;
       itti_msg->result.choice.experimental =

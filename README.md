@@ -7,12 +7,11 @@
 <p align="center">
     <a href="https://github.com/magma/magma/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-BSD3clause-blue.svg" alt="License"></a>
     <a href="https://github.com/magma/magma/releases"><img src="https://img.shields.io/github/release/magma/magma" alt="GitHub Release"></a>
-    <a href="https://docs.magmacore.org/docs/next/contributing/contribute_workflow"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PR's Welcome"></a>
+    <a href="https://github.com/magma/magma/wiki/Contributing-Code"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PR's Welcome"></a>
     <a href="https://github.com/magma/magma/graphs/contributors"><img src="https://img.shields.io/github/contributors/magma/magma" alt="GitHub contributors"></a>
     <a href="https://github.com/magma/magma/commits/master"><img src="https://img.shields.io/github/last-commit/magma/magma" alt="GitHub last commit"></a>
     <a href="https://github.com/magma/magma/commits/master"><img src="https://img.shields.io/github/commit-activity/y/magma/magma" alt="GitHub commit activity the past week"></a>
     <a href="https://codecov.io/gh/magma/magma"><img src="https://codecov.io/gh/magma/magma/branch/master/graph/badge.svg" alt="CodeCov"></a>
-    <a href="docs/readmes/lte/hil_tests.md"><img src="http://ens-spirent-test-summary.com.s3-us-west-1.amazonaws.com/sanity/hilsanityres.svg" alt="HIL AGW tests"></a>
 </p>
 
 Magma is an open-source software platform that gives network operators an open, flexible and extendable mobile core network solution. Magma enables better connectivity by:
@@ -21,7 +20,6 @@ Magma is an open-source software platform that gives network operators an open, 
 - Enabling operators to manage their networks more efficiently with more automation, less downtime, better predictability, and more agility to add new services and applications
 - Enabling federation between existing MNOs and new infrastructure providers for expanding rural infrastructure
 - Allowing operators who are constrained with licensed spectrum to add capacity and reach by using Wi-Fi and CBRS
-
 
 ## Magma Architecture
 
@@ -39,7 +37,12 @@ Magma has three major components
 
 ## Documentation
 
-Magma's usage docs, and developer docs, are available at [https://docs.magmacore.org/docs/basics/introduction.html](https://docs.magmacore.org).
+- [Magma Website](https://magmacore.org/): Project landing page
+- [Docs](https://magma.github.io/magma/docs/basics/introduction.html): Deployment, configuration and usage information
+- [Code](https://github.com/magma): Source code
+- [Contributing](https://github.com/magma/magma/wiki/Contributor-Guide): Contributor Guide
+- [Wiki](https://wiki.magmacore.org/): Meeting notes and project team resources
+- [Rewards Program](REWARDS_PROGRAM.md): How to participate in the Magma rewards program
 
 ## Join the Magma community
 
@@ -48,20 +51,6 @@ See the [Community](https://magmacore.org/join-the-open-source-community/) page 
 Start by joining the community on Slack: [magmacore workspace](https://slack.magmacore.org/).
 
 Direct specific questions to the [GitHub Discussions page](https://github.com/magma/magma/discussions). Your question might already have an answer!
-
-## Contributing
-
-Start with the project's contributing conventions
-
-- [Contributing conventions](https://docs.magmacore.org/docs/next/contributing/contribute_conventions)
-  for conventions on contributing to the project
-
-If you're new to the project, also consider reading
-
-- [Developer onboarding](https://docs.magmacore.org/docs/next/contributing/contribute_onboarding)
-  for onboarding to the project
-- [Development workflow](https://docs.magmacore.org/docs/next/contributing/contribute_workflow) for how to open a
-  pull request
 
 ## License
 
@@ -72,3 +61,12 @@ The EPC originates from OAI (OpenAirInterface Software Alliance) and is offered 
 ## Risks
 
 The Magma materials are provided in accordance with the licenses made available in the LICENSE file. Prior to using the materials, it is highly recommended that you test and verify that the materials meet your specific requirements, including, without limitation, any and all security and performance requirements.
+
+## Security
+
+Responsible disclosures from independent researchers are gratefully accepted. See the [Security Policy](/magma/magma/security/policy) for submission details and [Security Overview for Contributors](https://github.com/magma/magma/wiki/Security-Overview-for-Contributors) to learn about other ways of contributing.
+
+We wish to acknowledge valuable disclosures by the following security researchers:
+
+- Guarang Maheta
+- Phi Trần

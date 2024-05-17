@@ -12,16 +12,13 @@
  */
 
 import LogsList from '../LogsList';
-import MomentUtils from '@date-io/moment';
-import MuiStylesThemeProvider from '@material-ui/styles/ThemeProvider';
+import MagmaAPI from '../../../api/MagmaAPI';
 import React from 'react';
 import defaultTheme from '../../../theme/default';
+import {AdapterDateFns} from '@mui/x-date-pickers/AdapterDateFns';
+import {LocalizationProvider} from '@mui/x-date-pickers';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
-import {MuiPickersUtilsProvider} from '@material-ui/pickers';
-
-import MagmaAPI from '../../../api/MagmaAPI';
-import moment from 'moment';
-import {MuiThemeProvider} from '@material-ui/core/styles';
+import {StyledEngineProvider, ThemeProvider} from '@mui/material/styles';
 import {
   fireEvent,
   render,
@@ -30,10 +27,18 @@ import {
   within,
 } from '@testing-library/react';
 import {mockAPI} from '../../../util/TestUtils';
+import {parse} from 'date-fns';
 
 const mockEnqueueSnackbar = jest.fn();
 jest.mock('../../../hooks/useSnackbar', () => ({
   useEnqueueSnackbar: () => mockEnqueueSnackbar,
+}));
+
+jest.mock('@mui/x-date-pickers/DateTimePicker', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment
+  DateTimePicker: jest.requireActual(
+    '@mui/x-date-pickers/DesktopDateTimePicker',
+  ).DesktopDateTimePicker,
 }));
 
 const networkId = 'test-network';
@@ -43,19 +48,20 @@ const renderWithProviders = (jsx: React.ReactNode) => {
     <MemoryRouter
       initialEntries={[`/nms/${networkId}/metrics/domain-proxy-logs`]}
       initialIndex={0}>
-      <MuiPickersUtilsProvider utils={MomentUtils}>
-        <MuiThemeProvider theme={defaultTheme}>
-          <MuiStylesThemeProvider theme={defaultTheme}>
-            <Routes>
-              <Route
-                path="/nms/:networkId/metrics/domain-proxy-logs"
-                element={jsx}
-              />
-            </Routes>
-          </MuiStylesThemeProvider>
-        </MuiThemeProvider>
-        ,
-      </MuiPickersUtilsProvider>
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <StyledEngineProvider injectFirst>
+          <ThemeProvider theme={defaultTheme}>
+            <ThemeProvider theme={defaultTheme}>
+              <Routes>
+                <Route
+                  path="/nms/:networkId/metrics/domain-proxy-logs"
+                  element={jsx}
+                />
+              </Routes>
+            </ThemeProvider>
+          </ThemeProvider>
+        </StyledEngineProvider>
+      </LocalizationProvider>
     </MemoryRouter>,
   );
 };
@@ -129,10 +135,12 @@ describe('<LogsList />', () => {
     it('Sends start date', async () => {
       fillInput('start-date-input', filterValues.startDate);
       clickSearchButton();
-      await expectApiCallParam(
-        'begin',
-        moment(filterValues.startDate).toISOString(),
+      const date = parse(
+        filterValues.startDate,
+        'yyyy/MM/dd HH:mm',
+        new Date(),
       );
+      await expectApiCallParam('begin', date.toISOString());
     });
 
     it('Sends responseCode', async () => {
@@ -156,10 +164,8 @@ describe('<LogsList />', () => {
     it('Sends end date', async () => {
       fillInput('end-date-input', filterValues.endDate);
       clickSearchButton();
-      await expectApiCallParam(
-        'end',
-        moment(filterValues.endDate).toISOString(),
-      );
+      const date = parse(filterValues.endDate, 'yyyy/MM/dd HH:mm', new Date());
+      await expectApiCallParam('end', date.toISOString());
     });
   });
 });

@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-expected_version="1.18.3"
+expected_version="1.20.1"
 all_versions_good=true
 
 while IFS= read -r -d '' file
@@ -43,7 +43,7 @@ do
   while read -r line;
   do
     version=$(echo "$line" | awk -F '"' '{print $2}')
-    if [[ -n $version && $version != "$expected_version" ]]
+    if [[ -n $version && $version != "$expected_version" && $version != "1.21.0" ]]
     then
       echo "Found unexpected Go version $version in file $(realpath --relative-to="$MAGMA_ROOT" "$file"):"
       echo "$line"

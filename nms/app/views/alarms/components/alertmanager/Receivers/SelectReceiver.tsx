@@ -12,10 +12,12 @@
  */
 
 import * as React from 'react';
-import Chip from '@material-ui/core/Chip';
-import CircularProgress from '@material-ui/core/CircularProgress';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import MenuItem from '@mui/material/MenuItem';
+import Select, {SelectChangeEvent} from '@mui/material/Select';
+import {AltFormField} from '../../../../../components/FormField';
+import {FormControl, OutlinedInput} from '@mui/material';
 import {useAlarmContext} from '../../AlarmContext';
 import {useParams} from 'react-router-dom';
 
@@ -39,8 +41,8 @@ export default function SelectReceiver({
     },
   );
   const handleChange = React.useCallback(
-    (e: React.ChangeEvent<{name?: string | undefined; value: unknown}>) => {
-      onChange(e.target.value as string);
+    (e: SelectChangeEvent<string>) => {
+      onChange(e.target.value);
     },
     [onChange],
   );
@@ -50,32 +52,40 @@ export default function SelectReceiver({
   }
 
   return (
-    <Select
-      {...fieldProps}
-      id="select-receiver"
-      data-testid="select-receiver"
-      onChange={handleChange}
-      defaultValue="Select Team"
-      inputProps={{'data-testid': 'select-receiver-input'}}
-      renderValue={value => (
-        <Chip
-          key={value as string}
-          label={value as string}
-          variant="outlined"
-          color="primary"
-          size="small"
-        />
-      )}
-      value={receiver || ''}>
-      <MenuItem value="" key={''}>
-        None
-      </MenuItem>
-      {error && <MenuItem>Error: Could not load receivers</MenuItem>}
-      {(response || []).map(receiver => (
-        <MenuItem value={receiver.name} key={receiver.name}>
-          {receiver.name}
-        </MenuItem>
-      ))}
-    </Select>
+    <AltFormField disableGutters label="Audience">
+      <FormControl fullWidth>
+        <Select
+          {...fieldProps}
+          id="select-receiver"
+          data-testid="select-receiver"
+          onChange={handleChange}
+          defaultValue="Select Team"
+          input={
+            <OutlinedInput
+              inputProps={{'data-testid': 'select-receiver-input'}}
+            />
+          }
+          renderValue={value => (
+            <Chip
+              key={value}
+              label={value}
+              variant="outlined"
+              color="primary"
+              size="small"
+            />
+          )}
+          value={receiver || ''}>
+          <MenuItem value="" key={''}>
+            None
+          </MenuItem>
+          {error && <MenuItem>Error: Could not load receivers</MenuItem>}
+          {(response || []).map(receiver => (
+            <MenuItem value={receiver.name} key={receiver.name}>
+              {receiver.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </AltFormField>
   );
 }

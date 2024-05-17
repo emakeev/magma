@@ -12,27 +12,27 @@
  */
 import type {DialogProps} from './OrganizationDialog';
 
-import ArrowDropDown from '@material-ui/icons/ArrowDropDown';
-import Button from '@material-ui/core/Button';
-import Checkbox from '@material-ui/core/Checkbox';
-import Collapse from '@material-ui/core/Collapse';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import FormHelperText from '@material-ui/core/FormHelperText';
-import FormLabel from '@material-ui/core/FormLabel';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemText from '@material-ui/core/ListItemText';
-import MenuItem from '@material-ui/core/MenuItem';
-import OutlinedInput from '@material-ui/core/OutlinedInput';
+import ArrowDropDown from '@mui/icons-material/ArrowDropDown';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import Collapse from '@mui/material/Collapse';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormHelperText from '@mui/material/FormHelperText';
+import FormLabel from '@mui/material/FormLabel';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import MenuItem from '@mui/material/MenuItem';
+import OutlinedInput from '@mui/material/OutlinedInput';
 import React from 'react';
-import Select from '@material-ui/core/Select';
+import Select from '@mui/material/Select';
 
 import {AltFormField} from '../../components/FormField';
 import {SSOSelectedType} from '../../../shared/types/auth';
 import {useState} from 'react';
 
 const ENABLE_ALL_NETWORKS_HELPER =
-  'By checking this, the organization will have access to all existing and future networks.';
+  'Checking this gives access to all networks that exist at the moment.';
 
 /**
  * Create Organization Tab
@@ -83,12 +83,12 @@ export default function (props: DialogProps) {
         {!shouldEnableAllNetworks && (
           <AltFormField
             label={'Accessible Networks'}
-            subLabel={'The networks that the organization have access to'}>
+            subLabel={'The networks that the organization has access to'}>
             <Select
               fullWidth={true}
               variant={'outlined'}
               multiple={true}
-              renderValue={selected => (selected as Array<string>).join(', ')}
+              renderValue={selected => selected.join(', ')}
               value={organization.networkIDs || []}
               onChange={({target}) => {
                 props.onOrganizationChange({

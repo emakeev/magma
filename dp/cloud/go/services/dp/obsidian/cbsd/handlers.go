@@ -43,18 +43,34 @@ const (
 	ManageCbsdsPath    = ManageNetworkPath + obsidian.UrlSep + "cbsds"
 	ManageCbsdPath     = ManageCbsdsPath + obsidian.UrlSep + ":cbsd_id"
 	DeregisterCbsdPath = ManageCbsdPath + obsidian.UrlSep + "deregister"
+	RelinquishCbsdPath = ManageCbsdPath + obsidian.UrlSep + "relinquish"
 )
 
 const baseWrongValMsg = "'%s' is not a proper value for %s"
 
 func GetHandlers() []obsidian.Handler {
 	return []obsidian.Handler{
-		{Path: ManageCbsdsPath, Methods: obsidian.GET, HandlerFunc: listCbsds},
-		{Path: ManageCbsdsPath, Methods: obsidian.POST, HandlerFunc: createCbsd},
-		{Path: ManageCbsdPath, Methods: obsidian.GET, HandlerFunc: fetchCbsd},
-		{Path: ManageCbsdPath, Methods: obsidian.DELETE, HandlerFunc: deleteCbsd},
-		{Path: ManageCbsdPath, Methods: obsidian.PUT, HandlerFunc: updateCbsd},
-		{Path: DeregisterCbsdPath, Methods: obsidian.POST, HandlerFunc: deregisterCbsd},
+		{Path: ManageCbsdsPath, Methods: obsidian.GET, HandlerFunc: withNetworkIdAndCbsdClient(listCbsds)},
+		{Path: ManageCbsdsPath, Methods: obsidian.POST, HandlerFunc: withNetworkIdAndCbsdClient(createCbsd)},
+		{Path: ManageCbsdPath, Methods: obsidian.GET, HandlerFunc: withNetworkIdAndCbsdClient(fetchCbsd)},
+		{Path: ManageCbsdPath, Methods: obsidian.DELETE, HandlerFunc: withNetworkIdAndCbsdClient(deleteCbsd)},
+		{Path: ManageCbsdPath, Methods: obsidian.PUT, HandlerFunc: withNetworkIdAndCbsdClient(updateCbsd)},
+		{Path: DeregisterCbsdPath, Methods: obsidian.POST, HandlerFunc: withNetworkIdAndCbsdClient(deregisterCbsd)},
+		{Path: RelinquishCbsdPath, Methods: obsidian.POST, HandlerFunc: withNetworkIdAndCbsdClient(relinquishCbsd)},
+	}
+}
+
+func withNetworkIdAndCbsdClient(handler func(c echo.Context, networkId string, client protos.CbsdManagementClient) error) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		networkId, nerr := obsidian.GetNetworkId(c)
+		if nerr != nil {
+			return nerr
+		}
+		client, err := getCbsdManagerClient()
+		if err != nil {
+			return err
+		}
+		return handler(c, networkId, client)
 	}
 }
 
@@ -67,18 +83,10 @@ func getCbsdId(c echo.Context) (string, *echo.HTTPError) {
 }
 
 func cbsdIdHTTPError() *echo.HTTPError {
-	return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("missing Cbsd ID"))
+	return echo.NewHTTPError(http.StatusBadRequest, "missing Cbsd ID")
 }
 
-func listCbsds(c echo.Context) error {
-	networkId, nerr := obsidian.GetNetworkId(c)
-	if nerr != nil {
-		return nerr
-	}
-	client, err := getCbsdManagerClient()
-	if err != nil {
-		return err
-	}
+func listCbsds(c echo.Context, networkId string, client protos.CbsdManagementClient) error {
 	pagination, err := GetPagination(c)
 	if err != nil {
 		return err
@@ -92,7 +100,7 @@ func listCbsds(c echo.Context) error {
 	ctx := c.Request().Context()
 	cbsds, err := client.ListCbsds(ctx, &req)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	payload := &models.PaginatedCbsds{
 		Cbsds:      make([]*models.Cbsd, len(cbsds.Details)),
@@ -104,22 +112,14 @@ func listCbsds(c echo.Context) error {
 	return c.JSON(http.StatusOK, payload)
 }
 
-func fetchCbsd(c echo.Context) error {
-	networkId, nerr := obsidian.GetNetworkId(c)
-	if nerr != nil {
-		return nerr
-	}
+func fetchCbsd(c echo.Context, networkId string, client protos.CbsdManagementClient) error {
 	cbsdId, nerr := getCbsdId(c)
 	if nerr != nil {
 		return nerr
 	}
-	client, err := getCbsdManagerClient()
-	if err != nil {
-		return err
-	}
 	id, err := strconv.Atoi(cbsdId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	req := protos.FetchCbsdRequest{NetworkId: networkId, Id: int64(id)}
 	ctx := c.Request().Context()
@@ -130,26 +130,18 @@ func fetchCbsd(c echo.Context) error {
 	return c.JSON(http.StatusOK, models.CbsdFromBackend(cbsd.Details))
 }
 
-func createCbsd(c echo.Context) error {
-	networkId, nerr := obsidian.GetNetworkId(c)
-	if nerr != nil {
-		return nerr
-	}
+func createCbsd(c echo.Context, networkId string, client protos.CbsdManagementClient) error {
 	payload := &models.MutableCbsd{}
 	if err := c.Bind(payload); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	ctx := c.Request().Context()
 	if err := payload.ValidateModel(ctx); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-	client, err := getCbsdManagerClient()
-	if err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	data, err := models.CbsdToBackend(payload)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	req := protos.CreateCbsdRequest{NetworkId: networkId, Data: data}
 	_, err = client.CreateCbsd(ctx, &req)
@@ -159,22 +151,14 @@ func createCbsd(c echo.Context) error {
 	return c.NoContent(http.StatusCreated)
 }
 
-func deleteCbsd(c echo.Context) error {
-	networkId, nerr := obsidian.GetNetworkId(c)
-	if nerr != nil {
-		return nerr
-	}
+func deleteCbsd(c echo.Context, networkId string, client protos.CbsdManagementClient) error {
 	cbsdId, nerr := getCbsdId(c)
 	if nerr != nil {
 		return nerr
 	}
-	client, err := getCbsdManagerClient()
-	if err != nil {
-		return err
-	}
 	id, err := strconv.Atoi(cbsdId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err)
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 	req := protos.DeleteCbsdRequest{NetworkId: networkId, Id: int64(id)}
 	ctx := c.Request().Context()
@@ -185,33 +169,25 @@ func deleteCbsd(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func updateCbsd(c echo.Context) error {
-	networkId, nerr := obsidian.GetNetworkId(c)
-	if nerr != nil {
-		return nerr
-	}
+func updateCbsd(c echo.Context, networkId string, client protos.CbsdManagementClient) error {
 	payload := &models.MutableCbsd{}
 	if err := c.Bind(payload); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	if err := payload.Validate(strfmt.Default); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	cbsdId, nerr := getCbsdId(c)
 	if nerr != nil {
 		return nerr
 	}
-	client, err := getCbsdManagerClient()
-	if err != nil {
-		return err
-	}
 	id, err := strconv.Atoi(cbsdId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err)
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 	data, err := models.CbsdToBackend(payload)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	req := protos.UpdateCbsdRequest{NetworkId: networkId, Id: int64(id), Data: data}
 	ctx := c.Request().Context()
@@ -222,26 +198,36 @@ func updateCbsd(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func deregisterCbsd(c echo.Context) error {
-	networkId, nerr := obsidian.GetNetworkId(c)
-	if nerr != nil {
-		return nerr
-	}
+func deregisterCbsd(c echo.Context, networkId string, client protos.CbsdManagementClient) error {
 	cbsdId, nerr := getCbsdId(c)
 	if nerr != nil {
 		return nerr
 	}
 	id, err := strconv.Atoi(cbsdId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err)
-	}
-	client, err := getCbsdManagerClient()
-	if err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 	req := protos.DeregisterCbsdRequest{NetworkId: networkId, Id: int64(id)}
 	ctx := c.Request().Context()
 	_, ierr := client.DeregisterCbsd(ctx, &req)
+	if ierr != nil {
+		return getHttpError(ierr)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func relinquishCbsd(c echo.Context, networkId string, client protos.CbsdManagementClient) error {
+	cbsdId, nerr := getCbsdId(c)
+	if nerr != nil {
+		return nerr
+	}
+	id, err := strconv.Atoi(cbsdId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+	}
+	req := protos.RelinquishCbsdRequest{NetworkId: networkId, Id: int64(id)}
+	ctx := c.Request().Context()
+	_, ierr := client.RelinquishCbsd(ctx, &req)
 	if ierr != nil {
 		return getHttpError(ierr)
 	}
@@ -257,11 +243,11 @@ func GetCbsdFilter(c echo.Context) *protos.CbsdFilter {
 func getHttpError(err error) error {
 	switch s, _ := status.FromError(err); s.Code() {
 	case codes.NotFound:
-		return echo.NewHTTPError(http.StatusNotFound, err)
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	case codes.AlreadyExists:
-		return echo.NewHTTPError(http.StatusConflict, err)
+		return echo.NewHTTPError(http.StatusConflict, err.Error())
 	default:
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 }
 

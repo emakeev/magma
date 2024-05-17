@@ -100,7 +100,7 @@ func setInitErrorHandlers(err error) []obsidian.Handler {
 
 func getInitErrorHandler(err error) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("initialization Error: %v", err))
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("initialization Error: %v", err))
 	}
 }
 
@@ -111,14 +111,14 @@ func getListLogsHandler(client *elastic.Client) func(c echo.Context) error {
 }
 
 type LogsFilter struct {
-	LogFrom             string
-	LogTo               string
-	Name                string
-	SerialNumber        string
-	FccId               string
-	ResponseCode        *int64
-	BeginTimestampMilli *int64
-	EndTimestampMilli   *int64
+	LogFrom           string
+	LogTo             string
+	Name              string
+	SerialNumber      string
+	FccId             string
+	ResponseCode      *int64
+	BeginTimestampSec *int64
+	EndTimestampSec   *int64
 }
 
 type Pagination struct {
@@ -163,8 +163,8 @@ func (r *ListLogsRequest) toElasticSearchQuery() *elastic.BoolQuery {
 	}
 
 	boolQuery := elastic.NewBoolQuery()
-	beginTS := r.Filter.BeginTimestampMilli
-	endTS := r.Filter.EndTimestampMilli
+	beginTS := r.Filter.BeginTimestampSec
+	endTS := r.Filter.EndTimestampSec
 	if beginTS != nil || endTS != nil {
 		timeRangeQuery := elastic.NewRangeQuery(sortTag)
 		if beginTS != nil {
@@ -217,10 +217,10 @@ func listLogs(c echo.Context, client *elastic.Client) error {
 	result, err := req.sendToElasticSearch(c, client)
 
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	if result.Error != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Elastic Error Type: %s, Reason: %s", result.Error.Type, result.Error.Reason))
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Elastic Error Type: %s, Reason: %s", result.Error.Type, result.Error.Reason))
 	}
 
 	resp := models.PaginatedLogs{
@@ -265,14 +265,14 @@ func getLogsFilter(c echo.Context) (*LogsFilter, error) {
 		return nil, err
 	}
 	return &LogsFilter{
-		LogFrom:             c.QueryParam("from"),
-		LogTo:               c.QueryParam("to"),
-		Name:                c.QueryParam("type"),
-		SerialNumber:        c.QueryParam("serial_number"),
-		FccId:               c.QueryParam("fcc_id"),
-		ResponseCode:        respCode,
-		BeginTimestampMilli: beginTS,
-		EndTimestampMilli:   endTS,
+		LogFrom:           c.QueryParam("from"),
+		LogTo:             c.QueryParam("to"),
+		Name:              c.QueryParam("type"),
+		SerialNumber:      c.QueryParam("serial_number"),
+		FccId:             c.QueryParam("fcc_id"),
+		ResponseCode:      respCode,
+		BeginTimestampSec: beginTS,
+		EndTimestampSec:   endTS,
 	}, nil
 }
 
@@ -284,7 +284,7 @@ func getTimeStamp(dateLayout string, p string, paramName string) (*int64, error)
 	if err != nil {
 		return nil, newBadRequest(baseWrongValMsg, p, paramName)
 	}
-	return to_pointer.Int64(ts.UnixNano() / int64(time.Millisecond)), nil
+	return to_pointer.Int64(ts.Unix()), nil
 }
 
 func getPagination(c echo.Context) (*Pagination, error) {

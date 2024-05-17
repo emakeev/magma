@@ -14,7 +14,9 @@ limitations under the License.
 import ctypes
 import inspect
 import os
+import re
 import time
+from typing import List
 
 import s1ap_types
 from integ_tests.common.magmad_client import MagmadServiceGrpc
@@ -54,7 +56,7 @@ class TestWrapper(object):
     TEST_IP_BLOCK = "192.168.128.0/24"
     MSX_S1_RETRY = 2
     TEST_CASE_EXECUTION_COUNT = 0
-    TEST_ERROR_TRACEBACKS = []
+    TEST_ERROR_TRACEBACKS: List[str] = []
 
     def __init__(
         self,
@@ -67,19 +69,22 @@ class TestWrapper(object):
         """
         Initialize the various classes required by the tests and setup.
         """
+        t = time.localtime()
+        current_time = time.strftime("%H:%M:%S", t)
         if TestWrapper.TEST_CASE_EXECUTION_COUNT != 0:
             print("\n**Running the test case again to identify flaky behavior")
         TestWrapper.TEST_CASE_EXECUTION_COUNT += 1
         print(
-            "Test Case Execution Count:",
+            "\nTest Case Execution Count:",
             TestWrapper.TEST_CASE_EXECUTION_COUNT,
+            "[Start time: " + str(current_time) + "]",
         )
 
-        t = time.localtime()
-        current_time = time.strftime("%H:%M:%S", t)
-        print("Start time", current_time)
-        self._s1_util = S1ApUtil()
-        self._enBConfig(ip_version)
+        federated_mode = (os.environ.get("FEDERATED_MODE") == "True")
+        print(
+            f"\n *** Running the test in {'Non-' if not federated_mode else ''}"
+            "Federated Mode\n",
+        )
 
         if self._test_oai_upstream:
             subscriber_client = SubscriberDbCassandra()
@@ -102,6 +107,15 @@ class TestWrapper(object):
         self._magmad_util.config_stateless(stateless_mode)
         self._magmad_util.config_apn_correction(apn_correction)
         self._magmad_util.config_health_service(health_service)
+
+        if not self._magmad_util.is_nat_enabled():
+            self._magmad_util.enable_nat()
+
+        self._magmad_util._wait_for_pipelined_to_initialize()
+
+        self._s1_util = S1ApUtil()  # calls get_datapath, i.e., should run after we ensured pipelined is started
+        self._enBConfig(ip_version)
+
         # gateway tests don't require restart, just wait for healthy now
         self._gateway_services = GatewayServicesUtil()
         if not self.wait_gateway_healthy:
@@ -391,7 +405,6 @@ class TestWrapper(object):
         Raises:
             ValueError: If no valid IP is found
         """
-        time.sleep(1)
         # Configure downlink route in TRF server
         assert self._trf_util.update_dl_route(self.TEST_IP_BLOCK)
 
@@ -426,7 +439,6 @@ class TestWrapper(object):
         Raises:
             ValueError: If no valid IP is found
         """
-        time.sleep(1)
         ips = self._getAddresses(*ues)
         for ip, ue in zip(ips, ues):
             if not ip:
@@ -484,7 +496,7 @@ class TestWrapper(object):
     def is_test_successful(cls, test) -> bool:
         """Get current test case execution status"""
         if test is None:
-            test = inspect.currentframe().f_back.f_back.f_locals["self"]
+            test = inspect.currentframe().f_back.f_back.f_locals["self"]  # type: ignore
         if test is not None and hasattr(test, "_outcome"):
             result = test.defaultTestResult()
             test._feedErrorsToResult(result, test._outcome.errors)
@@ -505,6 +517,7 @@ class TestWrapper(object):
                     else result.errors[0][1],
                 )
             return not (test_contains_error or test_contains_failure)
+        return False
 
     def cleanup(self, test=None):
         """Cleanup test setup after testcase execution"""
@@ -513,9 +526,10 @@ class TestWrapper(object):
         print("************************* send SCTP SHUTDOWN")
         self._s1_util.issue_cmd(s1ap_types.tfwCmd.SCTP_SHUTDOWN_REQ, None)
 
+        print("************************* Cleaning up TFW")
+        self._s1_util.issue_cmd(s1ap_types.tfwCmd.TFW_CLEANUP, None)
+
         if not is_test_successful:
-            print("************************* Cleaning up TFW")
-            self._s1_util.issue_cmd(s1ap_types.tfwCmd.TFW_CLEANUP, None)
             self._s1_util.delete_ovs_flow_rules()
 
         self._s1_util.cleanup()
@@ -526,13 +540,18 @@ class TestWrapper(object):
 
         if not is_test_successful:
             print("The test has failed. Restarting Sctpd for cleanup")
-            self.magmad_util.restart_sctpd()
+            self.magmad_util.restart_services(['sctpd'], wait_time=30)
             self.magmad_util.print_redis_state()
             if TestWrapper.TEST_CASE_EXECUTION_COUNT == 3:
                 self.generate_flaky_summary()
 
         elif TestWrapper.TEST_CASE_EXECUTION_COUNT > 1:
             self.generate_flaky_summary()
+
+        if not self.magmad_util.is_redis_empty():
+            print("************************* Redis not empty, initiating cleanup")
+            self.magmad_util.restart_services(['sctpd'], wait_time=30)
+            self.magmad_util.print_redis_state()
 
     def multiEnbConfig(self, num_of_enbs, enb_list=None):
         """Configure multiple eNB in S1APTester"""
